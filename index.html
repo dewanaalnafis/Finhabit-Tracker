@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Finhabit Tracker - Aplikasi untuk tracking keuangan dan habit harian">
+    <meta name="theme-color" content="#4CAF50">
+    <title>Finhabit Tracker</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header>
+            <h1>💰 Finhabit Tracker</h1>
+            <p class="tagline">Kelola Keuangan & Habit dengan Mudah</p>
+        </header>
+
+        <!-- MAIN TABS -->
+        <nav class="main-tabs">
+            <button class="main-tab-btn active" onclick="showMainTab('finance')">💳 Finance</button>
+            <button class="main-tab-btn" onclick="showMainTab('habit')">✅ Habit</button>
+        </nav>
+
+        <!-- ========== FINANCE TAB ========== -->
+        <div id="finance-main" class="main-tab-content active">
+            <!-- DASHBOARD CARDS -->
+            <div class="dashboard">
+                <div class="card balance">
+                    <h3>💰 Total Saldo</h3>
+                    <h2 id="total-balance">Rp 0</h2>
+                </div>
+                <div class="card debt">
+                    <h3>📉 Saldo Hutang</h3>
+                    <h2 id="total-debt">Rp 0</h2>
+                </div>
+                <div class="card receivable">
+                    <h3>📈 Saldo Piutang</h3>
+                    <h2 id="total-receivable">Rp 0</h2>
+                </div>
+            </div>
+
+            <!-- SUB TABS -->
+            <nav class="sub-tabs">
+                <button class="sub-tab-btn active" onclick="showSubTab('finance', 'resume')">📊 Resume</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance', 'saldo')">💼 Saldo</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance', 'grafik')">📈 Grafik</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance', 'hutang')">🤝 Hutang</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance', 'pengaturan')">⚙️ Pengaturan</button>
+            </nav>
+
+            <!-- SUB TAB: RESUME -->
+            <div id="finance-resume" class="sub-tab-content active">
+                <div class="filter-section">
+                    <label>📅 Periode:</label>
+                    <select id="finance-period">
+                        <option value="month">Bulan Ini</option>
+                        <option value="custom">Custom</option>
+                        <option value="all">Semua</option>
+                    </select>
+                    <input type="date" id="finance-start" style="display:none;">
+                    <input type="date" id="finance-end" style="display:none;">
+                    
+                    <label>🏷️ Kategori:</label>
+                    <select id="finance-category-filter">
+                        <option value="all">Semua Kategori</option>
+                    </select>
+                    
+                    <button onclick="filterFinanceTransactions()">🔍 Filter</button>
+                </div>
+
+                <div class="resume-grid">
+                    <div class="resume-card income">
+                        <div class="resume-card-label">💵 Total Pemasukan</div>
+                        <div class="resume-card-amount" id="resume-income">Rp 0</div>
+                    </div>
+                    <div class="resume-card expense">
+                        <div class="resume-card-label">💸 Total Pengeluaran</div>
+                        <div class="resume-card-amount" id="resume-expense">Rp 0</div>
+                    </div>
+                    <div class="resume-card balance">
+                        <div class="resume-card-label">💰 Selisih</div>
+                        <div class="resume-card-amount" id="resume-balance">Rp 0</div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">📋 Riwayat Transaksi</h3>
+                <div id="transaction-list" class="list"></div>
+            </div>
+
+            <!-- SUB TAB: SALDO -->
+            <div id="finance-saldo" class="sub-tab-content">
+                <h3 class="section-title">💼 Resume Saldo per Dompet/Rekening</h3>
+                
+                <div id="wallet-balance-list" class="resume-grid">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+
+                <h3 class="section-title">📋 Detail Transaksi per Dompet</h3>
+                <div id="wallet-detail-section">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- SUB TAB: GRAFIK -->
+            <div id="finance-grafik" class="sub-tab-content">
+                <h3 class="section-title">📊 Analisis Keuangan</h3>
+                
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <h4>💸 Pengeluaran per Kategori</h4>
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>💵 Pemasukan per Kategori</h4>
+                        <canvas id="incomeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>📈 Trend Bulanan</h4>
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- SUB TAB: HUTANG -->
+            <div id="finance-hutang" class="sub-tab-content">
+                <div class="resume-grid">
+                    <div class="resume-card expense">
+                        <div class="resume-card-label">📉 Total Hutang</div>
+                        <div class="resume-card-amount" id="debt-total">Rp 0</div>
+                    </div>
+                    <div class="resume-card income">
+                        <div class="resume-card-label">📈 Total Piutang</div>
+                        <div class="resume-card-amount" id="receivable-total">Rp 0</div>
+                    </div>
+                    <div class="resume-card balance">
+                        <div class="resume-card-label">💰 Selisih</div>
+                        <div class="resume-card-amount" id="debt-balance">Rp 0</div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">📋 Daftar Hutang & Piutang</h3>
+                <div id="debt-list" class="list"></div>
+            </div>
+
+            <!-- SUB TAB: PENGATURAN -->
+            <div id="finance-pengaturan" class="sub-tab-content">
+                <div class="setting-section">
+                    <h4>💼 Kelola Dompet/Rekening</h4>
+                    <form id="wallet-form" class="form-inline">
+                        <input type="text" id="wallet-name" placeholder="Nama Dompet" required>
+                        <input type="number" id="wallet-balance" placeholder="Saldo Awal (Rp)" required>
+                        <button type="submit">➕ Tambah</button>
+                    </form>
+                    <div id="wallet-list" class="list"></div>
+                </div>
+
+                <div class="setting-section">
+                    <h4>💵 Kategori Pemasukan</h4>
+                    <form id="income-category-form" class="form-inline">
+                        <input type="text" id="income-category-name" placeholder="Nama Kategori" required>
+                        <button type="submit">➕ Tambah</button>
+                    </form>
+                    <div id="income-category-list" class="list"></div>
+                </div>
+
+                <div class="setting-section">
+                    <h4>💸 Kategori Pengeluaran</h4>
+                    <form id="expense-category-form" class="form-inline">
+                        <input type="text" id="expense-category-name" placeholder="Nama Kategori" required>
+                        <button type="submit">➕ Tambah</button>
+                    </form>
+                    <div id="expense-category-list" class="list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== HABIT TAB ========== -->
+        <div id="habit-main" class="main-tab-content">
+            <!-- SUB TABS -->
+            <nav class="sub-tabs">
+                <button class="sub-tab-btn active" onclick="showSubTab('habit', 'resume')">📊 Resume</button>
+                <button class="sub-tab-btn" onclick="showSubTab('habit', 'pengaturan')">⚙️ Pengaturan</button>
+            </nav>
+
+            <!-- SUB TAB: RESUME -->
+            <div id="habit-resume" class="sub-tab-content active">
+                <div class="filter-section">
+                    <label>📅 Filter:</label>
+                    <input type="date" id="habit-start">
+                    <label>s/d</label>
+                    <input type="date" id="habit-end">
+                    <button onclick="filterHabitHistory()">🔍 Filter</button>
+                    <button onclick="resetHabitFilter()" style="background: #999;">🔄 Reset</button>
+                </div>
+
+                <div class="resume-grid">
+                    <div class="resume-card income">
+                        <div class="resume-card-label">⭐ Skor Hari Ini</div>
+                        <div class="resume-card-amount" id="habit-today-score" style="color: #667eea;">0</div>
+                    </div>
+                    <div class="resume-card expense">
+                        <div class="resume-card-label">🔥 Streak</div>
+                        <div class="resume-card-amount" id="habit-streak" style="color: #f5576c;">0 Hari</div>
+                    </div>
+                    <div class="resume-card balance">
+                        <div class="resume-card-label">📈 Avg Score</div>
+                        <div class="resume-card-amount" id="habit-avg" style="color: #4facfe;">0</div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">📜 Riwayat Check-in</h3>
+                <div id="habit-history-list" class="list"></div>
+
+                <div class="habit-form">
+                    <h4>✅ Check-in Hari Ini</h4>
+                    <div id="checkin-container"></div>
+                </div>
+            </div>
+
+            <!-- SUB TAB: PENGATURAN -->
+            <div id="habit-pengaturan" class="sub-tab-content">
+                <div class="habit-form">
+                    <h4>➕ Buat Pertanyaan Habit Baru</h4>
+                    <form id="question-form">
+                        <div class="form-group">
+                            <label>Pertanyaan</label>
+                            <input type="text" id="question-text" placeholder="Contoh: Apakah saya olahraga hari ini?" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tipe Jawaban</label>
+                            <select id="question-type" onchange="toggleQuestionType()">
+                                <option value="text">Isian Singkat (Teks)</option>
+                                <option value="multiple">Pilihan Ganda (dengan Skor)</option>
+                            </select>
+                        </div>
+
+                        <div id="options-section" style="display: none;">
+                            <div class="form-group">
+                                <label>Opsi Pilihan Ganda</label>
+                                <div class="options-builder" id="options-builder">
+                                    <div class="option-item">
+                                        <input type="text" placeholder="Contoh: Sangat Baik" class="option-label" autocomplete="off">
+                                        <input type="number" placeholder="Skor" class="option-score" value="5" min="0" max="100" autocomplete="off">
+                                        <button type="button" onclick="removeOption(this)" title="Hapus">✕</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="add-option-btn" onclick="addOption()">➕ Tambah Opsi</button>
+                                <small style="color: #666; display: block; margin-top: 8px;">
+                                    💡 Contoh: "Sangat Baik" skor 5, "Baik" skor 4
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit">💾 Simpan Pertanyaan</button>
+                        </div>
+                    </form>
+                </div>
+
+                <h3 class="section-title">📋 Daftar Pertanyaan</h3>
+                <div id="questions-list" class="list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB BUTTON -->
+    <button class="fab" id="fab-btn" onclick="openActionMenu()">➕</button>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <!-- ACTION MENU -->
+        <div class="action-menu" id="action-menu" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3>Pilih Aksi</h3>
+                <button class="action-menu-close" onclick="closeActionMenu()">✕</button>
+            </div>
+            <button class="action-btn" onclick="showForm('income')">
+                <div class="action-btn-icon">💵</div>
+                <div class="action-btn-content">
+                    <h4>Catat Pemasukan</h4>
+                    <p>Tambah pendapatan atau bonus</p>
+                </div>
+            </button>
+            <button class="action-btn" onclick="showForm('expense')">
+                <div class="action-btn-icon">💸</div>
+                <div class="action-btn-content">
+                    <h4>Catat Pengeluaran</h4>
+                    <p>Catat belanja atau biaya</p>
+                </div>
+            </button>
+            <button class="action-btn" onclick="showForm('transfer')">
+                <div class="action-btn-icon">🔄</div>
+                <div class="action-btn-content">
+                    <h4>Transfer Saldo</h4>
+                    <p>Pindahkan uang antar rekening</p>
+                </div>
+            </button>
+            <button class="action-btn" onclick="showForm('debt')">
+                <div class="action-btn-icon">🤝</div>
+                <div class="action-btn-content">
+                    <h4>Hutang / Piutang</h4>
+                    <p>Catat pinjaman atau tagihan</p>
+                </div>
+            </button>
+        </div>
+
+        <!-- FORM PEMASUKAN -->
+        <div class="action-menu modal-form" id="form-income" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3>💵 Catat Pemasukan</h3>
+                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            </div>
+            <form id="income-form">
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="income-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="income-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Dompet</label>
+                    <select id="income-wallet" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="income-amount" placeholder="Masukkan nominal" required>
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="income-note" placeholder="Tambahkan catatan...">
+                </div>
+                <div class="form-group">
+                    <button type="submit">💾 Simpan</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- FORM PENGELUARAN -->
+        <div class="action-menu modal-form" id="form-expense" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3>💸 Catat Pengeluaran</h3>
+                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            </div>
+            <form id="expense-form">
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="expense-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="expense-category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Dompet</label>
+                    <select id="expense-wallet" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="expense-amount" placeholder="Masukkan nominal" required>
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="expense-note" placeholder="Tambahkan catatan...">
+                </div>
+                <div class="form-group">
+                    <button type="submit">💾 Simpan</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- FORM TRANSFER -->
+        <div class="action-menu modal-form" id="form-transfer" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3>🔄 Transfer Saldo</h3>
+                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            </div>
+            <form id="transfer-form">
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="transfer-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Dari Dompet</label>
+                    <select id="transfer-from" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Ke Dompet</label>
+                    <select id="transfer-to" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="transfer-amount" placeholder="Masukkan nominal" required>
+                </div>
+                <div class="form-group">
+                    <label>Biaya Admin (Rp)</label>
+                    <input type="number" id="transfer-fee" placeholder="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="transfer-note" placeholder="Tambahkan catatan...">
+                </div>
+                <div class="form-group">
+                    <button type="submit">🔄 Transfer</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- FORM HUTANG/PIUTANG -->
+        <div class="action-menu modal-form" id="form-debt" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3>🤝 Hutang / Piutang</h3>
+                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            </div>
+            <form id="debt-form">
+                <div class="form-group">
+                    <label>Tipe</label>
+                    <select id="debt-type" onchange="toggleDebtWallet()" required>
+                        <option value="hutang">Saya Berhutang</option>
+                        <option value="piutang">Saya Menghutangi</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nama Orang</label>
+                    <input type="text" id="debt-person" placeholder="Nama orang" required>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="debt-amount" placeholder="Masukkan nominal" required>
+                </div>
+                <div class="form-group" id="debt-wallet-group" style="display:none;">
+                    <label>Dari Dompet (Uang Keluar)</label>
+                    <select id="debt-wallet"></select>
+                    <small style="color:#666;display:block;margin-top:5px;">💡 Pilih dompet untuk menghutangi (uang keluar sekarang)</small>
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="debt-note" placeholder="Tambahkan catatan...">
+                </div>
+                <div class="form-group">
+                    <button type="submit">💾 Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL PELUNASAN -->
+    <div class="modal-overlay" id="pay-debt-modal" onclick="closePayDebtModal(event)">
+        <div class="action-menu" onclick="event.stopPropagation()">
+            <div class="action-menu-header">
+                <h3 id="pay-debt-title">💰 Lunasi Hutang/Piutang</h3>
+                <button class="action-menu-close" onclick="closePayDebtModal()">✕</button>
+            </div>
+            <form id="pay-debt-form">
+                <div class="form-group">
+                    <label id="pay-amount-label">Nominal yang Dibayar/Diterima (Rp)</label>
+                    <input type="number" id="pay-amount" placeholder="Masukkan nominal" required>
+                    <small id="pay-remaining" style="color:#666;display:block;margin-top:5px;"></small>
+                </div>
+                <div class="form-group">
+                    <label id="pay-wallet-label">Dompet</label>
+                    <select id="pay-wallet" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Pelunasan</label>
+                    <input type="date" id="pay-date" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">✅ Lunasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
