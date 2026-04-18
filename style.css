@@ -642,6 +642,53 @@ h1 { font-size: 2em; margin-bottom: 5px; }
 .modal-form { display: none; }
 .modal-form.active { display: block; }
 
+/* PRIVACY MODE */
+.privacy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.privacy-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.privacy-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    color: #667eea;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.privacy-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.privacy-toggle #privacy-icon {
+    font-size: 1.3em;
+}
+
+.privacy-toggle.active {
+    background: #f44336;
+    color: white;
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
     body { padding: 0; }

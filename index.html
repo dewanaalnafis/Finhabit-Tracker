@@ -28,11 +28,21 @@
         <!-- MAIN TABS -->
         <nav class="main-tabs">
             <button class="main-tab-btn active" onclick="showMainTab('finance')">💳 Finance</button>
+            <button class="main-tab-btn" onclick="showMainTab('finance2')">🔒 Finance 2</button>
             <button class="main-tab-btn" onclick="showMainTab('habit')">✅ Habit</button>
         </nav>
 
         <!-- ========== FINANCE TAB ========== -->
         <div id="finance-main" class="main-tab-content active">
+            <!-- PRIVACY TOGGLE -->
+            <div class="privacy-header">
+                <h3>💳 Finance - Main Dashboard</h3>
+                <button class="privacy-toggle" onclick="toggleAmounts()" id="privacy-toggle-btn-f1">
+                    <span class="privacy-icon">👁️</span>
+                    <span class="privacy-text">Hide Amounts</span>
+                </button>
+            </div>
+
             <!-- DASHBOARD CARDS -->
             <div class="dashboard">
                 <div class="card balance">
@@ -182,6 +192,131 @@
                     </form>
                     <div id="expense-category-list" class="list"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ========== FINANCE 2 TAB (PRIVACY MODE) ========== -->
+        <div id="finance2-main" class="main-tab-content">
+            <!-- PRIVACY TOGGLE -->
+            <div class="privacy-header">
+                <h3>🔒 Finance 2 - Privacy Mode</h3>
+                <button class="privacy-toggle" onclick="toggleAmounts()" id="privacy-toggle-btn">
+                    <span id="privacy-icon">👁️</span>
+                    <span id="privacy-text">Hide Amounts</span>
+                </button>
+            </div>
+
+            <!-- DASHBOARD CARDS -->
+            <div class="dashboard">
+                <div class="card balance">
+                    <h3>💰 Total Saldo</h3>
+                    <h2 id="total-balance-f2">Rp 0</h2>
+                </div>
+                <div class="card debt">
+                    <h3>📉 Saldo Hutang</h3>
+                    <h2 id="total-debt-f2">Rp 0</h2>
+                </div>
+                <div class="card receivable">
+                    <h3>📈 Saldo Piutang</h3>
+                    <h2 id="total-receivable-f2">Rp 0</h2>
+                </div>
+            </div>
+
+            <!-- SUB TABS -->
+            <nav class="sub-tabs">
+                <button class="sub-tab-btn active" onclick="showSubTab('finance2', 'resume')">📊 Resume</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance2', 'saldo')">💼 Saldo</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance2', 'grafik')">📈 Grafik</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance2', 'hutang')">🤝 Hutang</button>
+                <button class="sub-tab-btn" onclick="showSubTab('finance2', 'pengaturan')">⚙️ Pengaturan</button>
+            </nav>
+
+            <!-- SUB TAB: RESUME -->
+            <div id="finance2-resume" class="sub-tab-content active">
+                <div class="filter-section">
+                    <label>📅 Periode:</label>
+                    <select id="finance2-period">
+                        <option value="month">Bulan Ini</option>
+                        <option value="custom">Custom</option>
+                        <option value="all">Semua</option>
+                    </select>
+                    <input type="date" id="finance2-start" style="display:none;">
+                    <input type="date" id="finance2-end" style="display:none;">
+                    
+                    <label>🏷️ Kategori:</label>
+                    <select id="finance2-category-filter">
+                        <option value="all">Semua Kategori</option>
+                    </select>
+                    
+                    <button onclick="filterFinance2Transactions()">🔍 Filter</button>
+                </div>
+
+                <div class="resume-grid">
+                    <div class="resume-card income">
+                        <div class="resume-card-label">💵 Total Pemasukan</div>
+                        <div class="resume-card-amount" id="resume-income-f2">Rp 0</div>
+                    </div>
+                    <div class="resume-card expense">
+                        <div class="resume-card-label">💸 Total Pengeluaran</div>
+                        <div class="resume-card-amount" id="resume-expense-f2">Rp 0</div>
+                    </div>
+                    <div class="resume-card balance">
+                        <div class="resume-card-label">💰 Selisih</div>
+                        <div class="resume-card-amount" id="resume-balance-f2">Rp 0</div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">📋 Riwayat Transaksi</h3>
+                <div id="transaction-list-f2" class="list"></div>
+            </div>
+
+            <!-- SUB TAB: SALDO -->
+            <div id="finance2-saldo" class="sub-tab-content">
+                <div id="saldo-list-f2"></div>
+            </div>
+
+            <!-- SUB TAB: GRAFIK -->
+            <div id="finance2-grafik" class="sub-tab-content">
+                <div class="chart-container">
+                    <canvas id="expense-chart-f2"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="income-chart-f2"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trend-chart-f2"></canvas>
+                </div>
+            </div>
+
+            <!-- SUB TAB: HUTANG -->
+            <div id="finance2-hutang" class="sub-tab-content">
+                <div class="resume-grid">
+                    <div class="resume-card expense">
+                        <div class="resume-card-label">📉 Total Hutang</div>
+                        <div class="resume-card-amount" id="debt-total-f2">Rp 0</div>
+                    </div>
+                    <div class="resume-card income">
+                        <div class="resume-card-label">📈 Total Piutang</div>
+                        <div class="resume-card-amount" id="receivable-total-f2">Rp 0</div>
+                    </div>
+                    <div class="resume-card balance">
+                        <div class="resume-card-label">💰 Selisih</div>
+                        <div class="resume-card-amount" id="debt-balance-f2">Rp 0</div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">📋 Daftar Hutang & Piutang Aktif</h3>
+                <div id="debt-list-f2" class="list"></div>
+
+                <h3 class="section-title" style="margin-top: 30px;">✅ Riwayat Hutang & Piutang yang Sudah Lunas</h3>
+                <div id="paid-debt-list-f2" class="list"></div>
+            </div>
+
+            <!-- SUB TAB: PENGATURAN -->
+            <div id="finance2-pengaturan" class="sub-tab-content">
+                <p style="text-align: center; color: #666; padding: 20px;">
+                    Pengaturan sama dengan Finance. Ubah di tab Finance untuk apply ke Finance 2.
+                </p>
             </div>
         </div>
 

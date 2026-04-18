@@ -9,39 +9,29 @@ let data = {
     habitRecords: []
 };
 
+// Privacy mode state
+let hideAmounts = false;
+
 // Load from localStorage
 function loadData() {
-    try {
-        const saved = localStorage.getItem('finhabitData');
-        if (saved) {
-            data = JSON.parse(saved);
-            console.log('✅ Data loaded from localStorage');
-        } else {
-            console.log('⚠️ No saved data, initializing defaults');
-            // Initialize default data
-            data.wallets = [
-                { id: Date.now(), name: 'Cash', balance: 0 },
-                { id: Date.now() + 1, name: 'Rekening BCA', balance: 0 }
-            ];
-            data.categories.income = ['Gaji', 'Bonus', 'Lain-lain'];
-            data.categories.expense = ['Makan', 'Transport', 'Belanja', 'Hiburan', 'Lain-lain'];
-            saveData();
-        }
-    } catch (error) {
-        console.error('❌ Error loading data:', error);
-        alert('⚠️ Gagal memuat data!\n\nPastikan:\n1. Buka dengan local server (bukan file://)\n2. Browser tidak dalam mode incognito\n3. localStorage tidak diblok');
+    const saved = localStorage.getItem('finhabitData');
+    if (saved) {
+        data = JSON.parse(saved);
+    } else {
+        // Initialize default data
+        data.wallets = [
+            { id: Date.now(), name: 'Cash', balance: 0 },
+            { id: Date.now() + 1, name: 'Rekening BCA', balance: 0 }
+        ];
+        data.categories.income = ['Gaji', 'Bonus', 'Lain-lain'];
+        data.categories.expense = ['Makan', 'Transport', 'Belanja', 'Hiburan', 'Lain-lain'];
+        saveData();
     }
 }
 
 // Save to localStorage
 function saveData() {
-    try {
-        localStorage.setItem('finhabitData', JSON.stringify(data));
-        console.log('💾 Data saved to localStorage');
-    } catch (error) {
-        console.error('❌ Error saving data:', error);
-        alert('⚠️ Gagal menyimpan data!\n\nPastikan:\n1. Buka dengan local server (bukan file://)\n2. Browser tidak dalam mode incognito');
-    }
+    localStorage.setItem('finhabitData', JSON.stringify(data));
 }
 
 // ========== NAVIGATION ==========
@@ -51,12 +41,15 @@ function showMainTab(tabName) {
     document.getElementById(tabName + '-main').classList.add('active');
     event.target.classList.add('active');
     
-    // Show/hide FAB
+    // Show/hide FAB (only for finance, not finance2)
     document.getElementById('fab-btn').style.display = tabName === 'finance' ? 'flex' : 'none';
     
     // Render charts if grafik tab
     if (tabName === 'finance') {
         setTimeout(renderCharts, 100);
+    } else if (tabName === 'finance2') {
+        renderFinance2();
+        setTimeout(renderChartsF2, 100);
     }
 }
 
@@ -109,6 +102,9 @@ function backToMenu() {
 
 // ========== UTILITY FUNCTIONS ==========
 function formatCurrency(amount) {
+    if (hideAmounts) {
+        return 'Rp ***';
+    }
     return 'Rp ' + amount.toLocaleString('id-ID');
 }
 
@@ -153,7 +149,7 @@ function populateCategoryDropdowns() {
         ).join('');
     }
     
-    // Populate category filter in Resume tab
+    // Populate category filter in Finance Resume tab
     const categoryFilter = document.getElementById('finance-category-filter');
     if (categoryFilter) {
         categoryFilter.innerHTML = '<option value="all">Semua Kategori</option>';
@@ -166,6 +162,22 @@ function populateCategoryDropdowns() {
         // Add expense categories
         data.categories.expense.forEach(c => {
             categoryFilter.innerHTML += `<option value="expense-${c}">💸 ${c}</option>`;
+        });
+    }
+    
+    // Populate category filter in Finance 2 Resume tab
+    const categoryFilter2 = document.getElementById('finance2-category-filter');
+    if (categoryFilter2) {
+        categoryFilter2.innerHTML = '<option value="all">Semua Kategori</option>';
+        
+        // Add income categories
+        data.categories.income.forEach(c => {
+            categoryFilter2.innerHTML += `<option value="income-${c}">💵 ${c}</option>`;
+        });
+        
+        // Add expense categories
+        data.categories.expense.forEach(c => {
+            categoryFilter2.innerHTML += `<option value="expense-${c}">💸 ${c}</option>`;
         });
     }
 }
@@ -856,7 +868,14 @@ function renderCharts() {
             },
             options: {
                 responsive: true,
-                plugins: { legend: { position: 'bottom' } }
+                plugins: { 
+                    legend: { position: 'bottom' },
+                    title: { 
+                        display: true, 
+                        text: hideAmounts ? 'Pengeluaran per Kategori (Hidden)' : 'Pengeluaran per Kategori' 
+                    },
+                    tooltip: { enabled: !hideAmounts }
+                }
             }
         });
     }
@@ -875,14 +894,27 @@ function renderCharts() {
             data: {
                 labels: Object.keys(incomeByCategory),
                 datasets: [{
-                    label: 'Pemasukan (Rp)',
+                    label: hideAmounts ? 'Hidden' : 'Pemasukan (Rp)',
                     data: Object.values(incomeByCategory),
                     backgroundColor: '#4CAF50'
                 }]
             },
             options: {
                 responsive: true,
-                plugins: { legend: { display: false } }
+                plugins: { 
+                    legend: { display: false },
+                    title: { 
+                        display: true, 
+                        text: hideAmounts ? 'Pemasukan per Kategori (Hidden)' : 'Pemasukan per Kategori' 
+                    },
+                    tooltip: { enabled: !hideAmounts }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: !hideAmounts }
+                    }
+                }
             }
         });
     }
@@ -920,12 +952,12 @@ function renderCharts() {
             data: {
                 labels: months,
                 datasets: [{
-                    label: 'Pemasukan',
+                    label: hideAmounts ? 'Hidden' : 'Pemasukan',
                     data: incomeData,
                     borderColor: '#4CAF50',
                     tension: 0.4
                 }, {
-                    label: 'Pengeluaran',
+                    label: hideAmounts ? 'Hidden' : 'Pengeluaran',
                     data: expenseData,
                     borderColor: '#f44336',
                     tension: 0.4
@@ -933,7 +965,20 @@ function renderCharts() {
             },
             options: {
                 responsive: true,
-                plugins: { legend: { position: 'bottom' } }
+                plugins: { 
+                    legend: { position: 'bottom' },
+                    title: { 
+                        display: true, 
+                        text: hideAmounts ? 'Trend 6 Bulan (Hidden)' : 'Trend 6 Bulan Terakhir' 
+                    },
+                    tooltip: { enabled: !hideAmounts }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: !hideAmounts }
+                    }
+                }
             }
         });
     }
@@ -1252,6 +1297,402 @@ function updateHabitStats() {
     }
 }
 
+// ========== FINANCE 2 (PRIVACY MODE) ==========
+function toggleAmounts() {
+    hideAmounts = !hideAmounts;
+    
+    // Update both Finance 1 and Finance 2 toggle buttons
+    const buttons = [
+        document.getElementById('privacy-toggle-btn-f1'),
+        document.getElementById('privacy-toggle-btn')
+    ];
+    
+    buttons.forEach(btn => {
+        if (!btn) return;
+        
+        const icon = btn.querySelector('.privacy-icon');
+        const text = btn.querySelector('.privacy-text');
+        
+        if (hideAmounts) {
+            icon.textContent = '🙈';
+            text.textContent = 'Show Amounts';
+            btn.classList.add('active');
+        } else {
+            icon.textContent = '👁️';
+            text.textContent = 'Hide Amounts';
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Re-render both Finance 1 and Finance 2 displays
+    updateDashboard();
+    renderTransactionList();
+    renderDebtList();
+    renderSaldoTab();
+    renderFinance2();
+    
+    // Re-render charts if on grafik tab
+    setTimeout(() => {
+        renderCharts();
+        renderChartsF2();
+    }, 100);
+}
+
+function renderFinance2() {
+    updateDashboardF2();
+    renderTransactionListF2();
+    renderDebtListF2();
+    renderSaldoTabF2();
+    updateResumeSummaryF2();
+    updateDebtSummaryF2();
+}
+
+function updateDashboardF2() {
+    const totalBalance = data.wallets.reduce((sum, w) => sum + w.balance, 0);
+    const totalDebt = data.debts.filter(d => !d.paid && d.type === 'hutang').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
+    const totalReceivable = data.debts.filter(d => !d.paid && d.type === 'piutang').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
+    
+    document.getElementById('total-balance-f2').textContent = formatCurrency(totalBalance);
+    document.getElementById('total-debt-f2').textContent = formatCurrency(totalDebt);
+    document.getElementById('total-receivable-f2').textContent = formatCurrency(totalReceivable);
+}
+
+function filterFinance2Transactions() {
+    const period = document.getElementById('finance2-period').value;
+    const categoryFilter = document.getElementById('finance2-category-filter').value;
+    
+    if (period === 'custom') {
+        document.getElementById('finance2-start').style.display = 'inline-block';
+        document.getElementById('finance2-end').style.display = 'inline-block';
+    } else {
+        document.getElementById('finance2-start').style.display = 'none';
+        document.getElementById('finance2-end').style.display = 'none';
+    }
+    
+    renderTransactionListF2();
+}
+
+function filterTransactionsByPeriodF2() {
+    const period = document.getElementById('finance2-period').value;
+    const categoryFilter = document.getElementById('finance2-category-filter').value;
+    const today = new Date();
+    
+    let filtered = [];
+    
+    // Filter by period
+    if (period === 'all') {
+        filtered = data.transactions;
+    } else if (period === 'month') {
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        filtered = data.transactions.filter(t => {
+            const tDate = new Date(t.date);
+            return tDate.getFullYear() === year && tDate.getMonth() === month;
+        });
+    } else if (period === 'custom') {
+        const start = document.getElementById('finance2-start').value;
+        const end = document.getElementById('finance2-end').value;
+        if (!start || !end) {
+            filtered = data.transactions;
+        } else {
+            filtered = data.transactions.filter(t => t.date >= start && t.date <= end);
+        }
+    }
+    
+    // Filter by category
+    if (categoryFilter !== 'all') {
+        const [type, category] = categoryFilter.split('-');
+        if (type && category) {
+            filtered = filtered.filter(t => t.type === type && t.category === category);
+        }
+    }
+    
+    return filtered;
+}
+
+function renderTransactionListF2() {
+    const container = document.getElementById('transaction-list-f2');
+    if (!container) return;
+    
+    const filteredTrans = filterTransactionsByPeriodF2();
+    
+    if (filteredTrans.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><h3>Belum Ada Transaksi</h3></div>';
+        return;
+    }
+    
+    container.innerHTML = filteredTrans.map(t => {
+        const wallet = data.wallets.find(w => w.id === t.walletId);
+        const walletName = wallet ? wallet.name : 'Unknown';
+        const typeClass = t.type === 'expense' ? 'expense' : '';
+        const sign = t.type === 'expense' ? '-' : '+';
+        
+        return `
+            <div class="list-item ${typeClass}">
+                <div class="list-item-header">
+                    <span>${t.category}</span>
+                    <span class="list-item-amount">${sign} ${formatCurrency(t.amount)}</span>
+                </div>
+                <div class="list-item-detail">
+                    ${t.date} • ${walletName} ${t.note ? '• ' + t.note : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    updateResumeSummaryF2();
+}
+
+function updateResumeSummaryF2() {
+    const filtered = filterTransactionsByPeriodF2();
+    const totalIncome = filtered.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = filtered.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalIncome - totalExpense;
+    
+    document.getElementById('resume-income-f2').textContent = formatCurrency(totalIncome);
+    document.getElementById('resume-expense-f2').textContent = formatCurrency(totalExpense);
+    document.getElementById('resume-balance-f2').textContent = formatCurrency(balance);
+}
+
+function renderSaldoTabF2() {
+    const container = document.getElementById('saldo-list-f2');
+    if (!container) return;
+    
+    container.innerHTML = data.wallets.map(w => {
+        const transactions = data.transactions.filter(t => t.walletId === w.id);
+        const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+        
+        return `
+            <div class="wallet-card">
+                <div class="wallet-header">
+                    <h3>${w.name}</h3>
+                    <h2>${formatCurrency(w.balance)}</h2>
+                </div>
+                <div class="wallet-details">
+                    <div class="wallet-detail income">
+                        <span>💵 Pemasukan:</span>
+                        <span>${formatCurrency(income)}</span>
+                    </div>
+                    <div class="wallet-detail expense">
+                        <span>💸 Pengeluaran:</span>
+                        <span>${formatCurrency(expense)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDebtListF2() {
+    const container = document.getElementById('debt-list-f2');
+    if (!container) return;
+    
+    const unpaidDebts = data.debts.filter(d => !d.paid);
+    
+    if (unpaidDebts.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🤝</div><h3>Tidak Ada Hutang/Piutang Aktif</h3><p>Semua sudah lunas! 🎉</p></div>';
+    } else {
+        container.innerHTML = unpaidDebts.map(d => {
+            const label = d.type === 'hutang' ? 'Hutang ke' : 'Piutang dari';
+            const remaining = d.amount - (d.paidAmount || 0);
+            const paidInfo = d.paidAmount > 0 ? `<br>Sudah dibayar: ${formatCurrency(d.paidAmount)}` : '';
+            
+            let walletInfo = '';
+            if (d.type === 'piutang' && d.walletId) {
+                const wallet = data.wallets.find(w => w.id === d.walletId);
+                if (wallet) walletInfo = `Dari: ${wallet.name} • `;
+            }
+            
+            return `
+                <div class="list-item debt">
+                    <div class="list-item-header">
+                        <span>${label} ${d.person}</span>
+                        <span class="list-item-amount" style="color: #ff9800;">${formatCurrency(remaining)}</span>
+                    </div>
+                    <div class="list-item-detail">
+                        ${walletInfo}${d.note || 'Tidak ada catatan'}${paidInfo}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    renderPaidDebtListF2();
+    updateDebtSummaryF2();
+}
+
+function renderPaidDebtListF2() {
+    const container = document.getElementById('paid-debt-list-f2');
+    if (!container) return;
+    
+    const paidDebts = data.debts.filter(d => d.paid);
+    
+    if (paidDebts.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><h3>Belum Ada Riwayat</h3><p>Hutang/piutang yang sudah lunas akan muncul di sini</p></div>';
+        return;
+    }
+    
+    container.innerHTML = paidDebts.map(d => {
+        const label = d.type === 'hutang' ? 'Hutang ke' : 'Piutang dari';
+        
+        let walletInfo = '';
+        if (d.paidWalletId) {
+            const wallet = data.wallets.find(w => w.id === d.paidWalletId);
+            if (wallet) {
+                const action = d.type === 'hutang' ? 'Dibayar dari' : 'Diterima ke';
+                walletInfo = `${action}: ${wallet.name} • `;
+            }
+        }
+        
+        return `
+            <div class="list-item" style="border-left-color: #4CAF50;">
+                <div class="list-item-header">
+                    <span>${label} ${d.person}</span>
+                    <span class="list-item-amount" style="color: #4CAF50;">✅ ${formatCurrency(d.amount)}</span>
+                </div>
+                <div class="list-item-detail">
+                    ${walletInfo}Lunas: ${d.paidDate || '-'} ${d.note ? '• ' + d.note : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateDebtSummaryF2() {
+    const totalDebt = data.debts.filter(d => !d.paid && d.type === 'hutang').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
+    const totalReceivable = data.debts.filter(d => !d.paid && d.type === 'piutang').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
+    const balance = totalReceivable - totalDebt;
+    
+    document.getElementById('debt-total-f2').textContent = formatCurrency(totalDebt);
+    document.getElementById('receivable-total-f2').textContent = formatCurrency(totalReceivable);
+    document.getElementById('debt-balance-f2').textContent = formatCurrency(balance);
+}
+
+function renderChartsF2() {
+    // Expense Pie Chart
+    const expenseCtx = document.getElementById('expense-chart-f2');
+    if (expenseCtx) {
+        const expenses = data.transactions.filter(t => t.type === 'expense');
+        const categoryTotals = {};
+        expenses.forEach(t => {
+            categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+        });
+        
+        new Chart(expenseCtx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    data: Object.values(categoryTotals),
+                    backgroundColor: ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: hideAmounts ? 'Pengeluaran per Kategori (Hidden)' : 'Pengeluaran per Kategori' },
+                    tooltip: { enabled: !hideAmounts }
+                }
+            }
+        });
+    }
+    
+    // Income Bar Chart
+    const incomeCtx = document.getElementById('income-chart-f2');
+    if (incomeCtx) {
+        const incomes = data.transactions.filter(t => t.type === 'income');
+        const categoryTotals = {};
+        incomes.forEach(t => {
+            categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+        });
+        
+        new Chart(incomeCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(categoryTotals),
+                datasets: [{
+                    label: hideAmounts ? 'Hidden' : 'Pemasukan',
+                    data: Object.values(categoryTotals),
+                    backgroundColor: '#4CAF50'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: hideAmounts ? 'Pemasukan per Kategori (Hidden)' : 'Pemasukan per Kategori' },
+                    tooltip: { enabled: !hideAmounts }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: !hideAmounts }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Trend Line Chart
+    const trendCtx = document.getElementById('trend-chart-f2');
+    if (trendCtx) {
+        const last6Months = [];
+        const today = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            last6Months.push(date.toISOString().substring(0, 7));
+        }
+        
+        const incomeData = last6Months.map(month => {
+            return data.transactions
+                .filter(t => t.type === 'income' && t.date.startsWith(month))
+                .reduce((sum, t) => sum + t.amount, 0);
+        });
+        
+        const expenseData = last6Months.map(month => {
+            return data.transactions
+                .filter(t => t.type === 'expense' && t.date.startsWith(month))
+                .reduce((sum, t) => sum + t.amount, 0);
+        });
+        
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: last6Months.map(m => m.substring(5)),
+                datasets: [
+                    {
+                        label: hideAmounts ? 'Hidden' : 'Pemasukan',
+                        data: incomeData,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: hideAmounts ? 'Hidden' : 'Pengeluaran',
+                        data: expenseData,
+                        borderColor: '#f44336',
+                        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: hideAmounts ? 'Trend 6 Bulan (Hidden)' : 'Trend 6 Bulan Terakhir' },
+                    tooltip: { enabled: !hideAmounts }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: !hideAmounts }
+                    }
+                }
+            }
+        });
+    }
+}
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', function() {
     loadData();
@@ -1278,37 +1719,4 @@ document.addEventListener('DOMContentLoaded', function() {
     const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     document.getElementById('habit-start').value = firstDayOfMonth.toISOString().split('T')[0];
     document.getElementById('habit-end').value = today;
-    
-    console.log('✅ Finhabit Tracker initialized');
 });
-
-// Auto-save before page unload
-window.addEventListener('beforeunload', function() {
-    saveData();
-    console.log('💾 Auto-saved before close');
-});
-
-// Manual backup function (can be called from console)
-function exportData() {
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `finhabit-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    console.log('📥 Data exported');
-}
-
-// Manual restore function (can be called from console)
-function importData(jsonString) {
-    try {
-        data = JSON.parse(jsonString);
-        saveData();
-        location.reload();
-        console.log('📤 Data imported successfully');
-    } catch (error) {
-        console.error('❌ Import failed:', error);
-        alert('Import gagal! File JSON tidak valid.');
-    }
-}
