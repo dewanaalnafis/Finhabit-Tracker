@@ -391,6 +391,7 @@
             <!-- Form Template (Dynamic) -->
             <div id="sheet-view-form" class="modal-form-view">
                 <form id="dynamic-form">
+                    <input type="hidden" id="edit-id"> <!-- Hidden ID untuk mode Edit -->
                     <input type="hidden" id="form-type">
                     
                     <div class="form-group" id="fg-date">
@@ -572,8 +573,10 @@ function showForm(type) {
     const title = document.getElementById('sheet-title');
     const form = document.getElementById('dynamic-form');
     
-    // Reset Form visibility
+    // Reset Form visibility & Pastikan mode Edit mati
     form.reset();
+    document.getElementById('edit-id').value = '';
+    document.getElementById('btn-submit-form').textContent = 'Simpan';
     document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('form-type').value = type;
     
@@ -642,11 +645,35 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     const note = document.getElementById('input-note').value;
     const walletId = parseInt(document.getElementById('input-wallet').value);
     const cat = document.getElementById('input-category').value;
+    const editId = document.getElementById('edit-id').value;
     
     if (type === 'in' || type === 'out') {
-        data.transactions.unshift({ id: Date.now(), type: type === 'in' ? 'income' : 'expense', date, category: cat, walletId, amount, note });
-        const w = data.wallets.find(w => w.id === walletId);
-        if(w) w.balance += (type === 'in' ? amount : -amount);
+        if (editId) {
+            // MODE EDIT
+            const t = data.transactions.find(x => x.id === parseInt(editId));
+            if (t) {
+                // 1. Batalkan nominal lama pada dompet lama
+                const oldW = data.wallets.find(w => w.id === t.walletId);
+                if (oldW) oldW.balance -= (t.type === 'income' ? t.amount : -t.amount);
+                
+                // 2. Perbarui data transaksi
+                t.type = type === 'in' ? 'income' : 'expense';
+                t.date = date;
+                t.category = cat;
+                t.walletId = walletId;
+                t.amount = amount;
+                t.note = note;
+
+                // 3. Tambahkan nominal baru pada dompet baru/sama
+                const newW = data.wallets.find(w => w.id === walletId);
+                if (newW) newW.balance += (t.type === 'income' ? amount : -amount);
+            }
+        } else {
+            // MODE TAMBAH BARU
+            data.transactions.unshift({ id: Date.now(), type: type === 'in' ? 'income' : 'expense', date, category: cat, walletId, amount, note });
+            const w = data.wallets.find(w => w.id === walletId);
+            if(w) w.balance += (type === 'in' ? amount : -amount);
+        }
     } 
     else if (type === 'tf') {
         const toId = parseInt(document.getElementById('input-wallet-to').value);
@@ -679,6 +706,28 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     closeBottomSheet();
     updateAllUI();
 });
+
+// Fitur Edit Transaksi
+function editTransaction(id) {
+    const t = data.transactions.find(x => x.id === id);
+    if(!t) return;
+    
+    // Buka form
+    document.getElementById('bottom-sheet-overlay').classList.add('active');
+    showForm(t.type === 'income' ? 'in' : 'out');
+    
+    // Isi data lama
+    document.getElementById('edit-id').value = t.id;
+    document.getElementById('input-date').value = t.date;
+    document.getElementById('input-category').value = t.category;
+    document.getElementById('input-wallet').value = t.walletId;
+    document.getElementById('input-amount').value = t.amount;
+    document.getElementById('input-note').value = t.note || '';
+    
+    // Ubah teks UI
+    document.getElementById('sheet-title').textContent = 'Edit ' + (t.type === 'income' ? 'Pemasukan' : 'Pengeluaran');
+    document.getElementById('btn-submit-form').textContent = 'Update Data';
+}
 
 function deleteItem(type, id) {
     if(!confirm('Hapus data ini?')) return;
@@ -779,7 +828,10 @@ function updateAllUI() {
                 </div>
                 <div style="text-align:right;">
                     <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
-                    <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('trans', ${t.id})">Hapus</button>
+                    <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px;">
+                        <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; background: var(--text-muted);" onclick="editTransaction(${t.id})">✎ Edit</button>
+                        <button class="btn-danger" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="deleteItem('trans', ${t.id})">Hapus</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
