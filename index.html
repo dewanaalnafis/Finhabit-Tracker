@@ -173,7 +173,7 @@
                 ✅ Habit
             </button>
             <button class="privacy-btn" onclick="togglePrivacy()" id="privacy-btn">
-                <span id="privacy-icon">👁️</span>
+                <span id="privacy-icon">🙈</span>
             </button>
         </div>
     </header>
@@ -440,7 +440,7 @@
 <script>
 // ================= STATE & DATA =================
 let data = { wallets: [], categories: { income: [], expense: [] }, transactions: [], transfers: [], debts: [], habitQuestions: [], habitRecords: [] };
-let isHidden = false;
+let isHidden = true; // Defaultnya mata tertutup / nominal di sensor
 let charts = { expense: null, trend: null };
 
 function loadData() {
