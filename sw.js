@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finhabit-cache-v6'; // Ganti angka ini setiap kali Anda update besar
+const CACHE_NAME = 'finhabit-cache-v7'; // Ganti angka ini setiap kali Anda update besar
 const urlsToCache = [
   './index.html',
   './manifest.json',

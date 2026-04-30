@@ -261,6 +261,7 @@
 
         <!-- Tab: Pengaturan -->
         <div id="tab-pengaturan" class="tab-content">
+            <!-- Tambah Dompet -->
             <div class="list-group" style="padding: 20px;">
                 <h2 class="section-header">Tambah Dompet / Sub-Rekening</h2>
                 <form id="form-add-wallet">
@@ -279,15 +280,27 @@
                     <button type="submit" class="btn-primary" style="padding:12px;">Simpan Dompet</button>
                 </form>
             </div>
+            
+            <!-- Kategori Baru -->
             <div class="list-group" style="padding: 20px;">
                 <h2 class="section-header">Kategori Baru</h2>
                 <div class="form-group">
-                    <input type="text" id="cat-name-new" class="form-control" placeholder="Nama Kategori">
+                    <input type="text" id="cat-name-new" class="form-control" placeholder="Nama Kategori (Cth: Pulsa)">
                 </div>
                 <div class="stats-grid" style="margin-bottom:0;">
                     <button class="btn-primary" style="background:var(--success); padding:10px;" onclick="addCategory('income')">+ Pemasukan</button>
                     <button class="btn-primary" style="background:var(--danger); padding:10px;" onclick="addCategory('expense')">+ Pengeluaran</button>
                 </div>
+            </div>
+
+            <!-- Kelola Kategori (List Category) -->
+            <div class="list-group" style="padding: 20px;">
+                <h2 class="section-header">Kelola Kategori</h2>
+                <h3 style="font-size: 14px; margin-top: 10px; margin-bottom: 5px; color: var(--success);">Pemasukan</h3>
+                <div id="ui-category-list-income" style="margin-bottom: 20px;"></div>
+
+                <h3 style="font-size: 14px; margin-top: 10px; margin-bottom: 5px; color: var(--danger);">Pengeluaran</h3>
+                <div id="ui-category-list-expense"></div>
             </div>
         </div>
     </div>
@@ -771,7 +784,15 @@ function addCategory(type) {
         data.categories[type].push(name);
         saveData(); document.getElementById('cat-name-new').value = '';
         alert('Kategori ditambahkan!');
+        updateAllUI(); // Segarkan UI agar kategori langsung muncul
     }
+}
+
+function deleteCategory(type, index) {
+    if(!confirm('Hapus kategori ini dari pilihan menu? (Tenang, histori transaksi lama tidak akan terhapus)')) return;
+    data.categories[type].splice(index, 1);
+    saveData();
+    updateAllUI();
 }
 
 // ================= HABITS =================
@@ -910,6 +931,29 @@ function updateAllUI() {
             </div>`;
         }).join('');
     }
+
+    // 7. Render Categories in Settings
+    renderCategoryList();
+}
+
+function renderCategoryList() {
+    const incList = document.getElementById('ui-category-list-income');
+    const expList = document.getElementById('ui-category-list-expense');
+    if(!incList || !expList) return;
+
+    incList.innerHTML = data.categories.income.map((c, idx) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <span style="font-size: 14px; color: var(--text-main); font-weight: 500;">${c}</span>
+            <button class="btn-danger" style="padding: 4px 8px; font-size: 11px; margin: 0; border-radius: 6px;" onclick="deleteCategory('income', ${idx})">Hapus</button>
+        </div>
+    `).join('');
+
+    expList.innerHTML = data.categories.expense.map((c, idx) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <span style="font-size: 14px; color: var(--text-main); font-weight: 500;">${c}</span>
+            <button class="btn-danger" style="padding: 4px 8px; font-size: 11px; margin: 0; border-radius: 6px;" onclick="deleteCategory('expense', ${idx})">Hapus</button>
+        </div>
+    `).join('');
 }
 
 // ================= CHARTS =================
