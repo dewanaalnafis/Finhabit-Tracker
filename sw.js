@@ -1,22 +1,29 @@
-const CACHE_NAME = 'finhabit-v1';
+const CACHE_NAME = 'finhabit-cache-v3';
 const urlsToCache = [
-  '/Finhabit-Tracker/',
-  '/Finhabit-Tracker/index.html',
-  '/Finhabit-Tracker/style.css',
-  '/Finhabit-Tracker/app.js',
-  '/Finhabit-Tracker/manifest.json'
+  './index.html',
+  './manifest.json',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => {
+        return cache.addAll(urlsToCache);
+      })
   );
 });
 
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => response || fetch(event.request))
+      .then(response => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      }
+    )
   );
 });

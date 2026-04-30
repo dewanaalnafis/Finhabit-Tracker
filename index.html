@@ -3,510 +3,813 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="description" content="Finhabit Tracker - Aplikasi untuk tracking keuangan dan habit harian">
-    <meta name="theme-color" content="#4CAF50">
-    
-    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#f3f4f6">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Finhabit">
     
-    <title>Finhabit Tracker</title>
+    <title>Finhabit</title>
     
-    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --border: #e5e7eb;
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background: #e5e5ea; display: flex; justify-content: center; }
+
+        /* Mobile Container */
+        .app-container {
+            width: 100%;
+            max-width: 480px; /* Looks like a phone on desktop */
+            background: var(--bg);
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.1);
+            overflow-x: hidden;
+            padding-bottom: calc(80px + var(--safe-bottom));
+        }
+
+        /* Header */
+        header { padding: 24px 20px 10px; display: flex; justify-content: space-between; align-items: center; }
+        .greeting h1 { font-size: 24px; color: var(--text-main); font-weight: 700; }
+        .greeting p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+        .privacy-btn { background: var(--surface); border: 1px solid var(--border); padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; display: flex; gap: 6px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+
+        /* Scrollable Pill Nav (Sub-tabs) */
+        .pill-nav { display: flex; overflow-x: auto; gap: 10px; padding: 10px 20px; scrollbar-width: none; }
+        .pill-nav::-webkit-scrollbar { display: none; }
+        .pill-btn { padding: 8px 16px; border-radius: 24px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
+        .pill-btn.active { background: var(--text-main); color: var(--surface); border-color: var(--text-main); }
+
+        /* Main Content Area */
+        .tab-content { display: none; padding: 10px 20px; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Main Balance Card */
+        .balance-card { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 24px; border-radius: 24px; color: white; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3); position: relative; overflow: hidden; }
+        .balance-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+        .balance-amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+        
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .stat-box { background: var(--surface); padding: 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .stat-icon { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
+        .stat-box.income .stat-icon { background: var(--success-light); color: var(--success); }
+        .stat-box.expense .stat-icon { background: var(--danger-light); color: var(--danger); }
+        .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-val { font-size: 16px; font-weight: 700; color: var(--text-main); }
+        .stat-box.expense .stat-val { color: var(--danger); }
+
+        /* Section Title */
+        .section-header { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; margin-top: 8px; }
+
+        /* List Items (Transactions, Debts) */
+        .list-group { background: var(--surface); border-radius: 20px; padding: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        .list-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
+        .list-item:last-child { border-bottom: none; }
+        .item-icon { width: 44px; height: 44px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-right: 16px; background: var(--bg); }
+        .item-icon.in { background: var(--success-light); color: var(--success); }
+        .item-icon.out { background: var(--danger-light); color: var(--danger); }
+        .item-icon.transfer { background: var(--primary-light); color: var(--primary); }
+        .item-details { flex: 1; }
+        .item-title { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 2px; }
+        .item-subtitle { font-size: 12px; color: var(--text-muted); }
+        .item-amount { font-size: 15px; font-weight: 700; text-align: right; }
+        .item-amount.in { color: var(--success); }
+        .item-amount.out { color: var(--danger); }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+
+        /* Forms & Inputs */
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+        .form-control { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg); font-size: 16px; color: var(--text-main); transition: border 0.2s; appearance: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+        .btn-primary { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; margin-top: 10px; }
+        .btn-primary:active { opacity: 0.8; }
+        .btn-danger { background: var(--danger); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; font-weight: 600; cursor: pointer; }
+        .btn-success { background: var(--success); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; border: none; font-weight: 600; cursor: pointer; margin-right: 4px; }
+
+        /* Native Bottom Navigation */
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding-bottom: var(--safe-bottom); z-index: 100; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 0; color: var(--text-muted); cursor: pointer; font-size: 11px; font-weight: 500; transition: color 0.2s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 24px; margin-bottom: 4px; }
+        
+        /* Floating Center Button */
+        .nav-fab-wrapper { position: relative; top: -20px; display: flex; justify-content: center; align-items: flex-start; }
+        .nav-fab { width: 56px; height: 56px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 28px; border: none; box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4); cursor: pointer; transition: transform 0.2s; }
+        .nav-fab:active { transform: scale(0.95); }
+
+        /* Bottom Sheet Modal */
+        .sheet-overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .sheet-overlay.active { opacity: 1; pointer-events: auto; }
+        .bottom-sheet { position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90vh; background: var(--surface); border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1); overflow-y: auto; padding-bottom: calc(24px + var(--safe-bottom)); }
+        .sheet-overlay.active .bottom-sheet { transform: translateY(0); }
+        .sheet-drag { width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 20px; }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 20px; font-weight: 700; color: var(--text-main); }
+        .btn-close { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; }
+
+        /* Action Grid in Modal */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .action-btn { background: var(--bg); border: 1px solid var(--border); padding: 20px 10px; border-radius: 20px; text-align: center; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; }
+        .action-btn:active { background: var(--primary-light); border-color: var(--primary); }
+        .action-btn-icon { font-size: 32px; margin-bottom: 12px; }
+        .action-btn-text { font-size: 14px; font-weight: 600; color: var(--text-main); }
+
+        .modal-form-view { display: none; }
+        .modal-form-view.active { display: block; }
+
+        /* Charts */
+        .chart-wrapper { background: var(--surface); padding: 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 16px; }
+
+        /* Habit Checkin */
+        .habit-card { background: var(--surface); padding: 20px; border-radius: 20px; border-left: 5px solid var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 16px; }
+        .habit-q { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text-main); }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- HEADER -->
-        <header>
-            <h1>💰 Finhabit Tracker</h1>
-            <p class="tagline">Kelola Keuangan & Habit dengan Mudah</p>
-        </header>
 
-        <!-- MAIN TABS -->
-        <nav class="main-tabs">
-            <button class="main-tab-btn active" onclick="showMainTab('finance')">
-                <span class="tab-icon">💰</span>
-                <span class="tab-label">Finance</span>
-            </button>
-            <button class="main-tab-btn" onclick="showMainTab('habit')">
-                <span class="tab-icon">✅</span>
-                <span class="tab-label">Habit</span>
-            </button>
-        </nav>
+<div class="app-container">
+    <!-- HEADER -->
+    <header>
+        <div class="greeting">
+            <h1 id="greeting-text">Halo! 👋</h1>
+            <p id="current-date">Memuat tanggal...</p>
+        </div>
+        <button class="privacy-btn" onclick="togglePrivacy()" id="privacy-btn">
+            <span id="privacy-icon">👁️</span>
+        </button>
+    </header>
 
-        <!-- ========== FINANCE TAB ========== -->
-        <div id="finance-main" class="main-tab-content active">
-            <!-- PRIVACY TOGGLE -->
-            <div class="privacy-header">
-                <h3>💰 Keuangan Pribadi</h3>
-                <button class="privacy-toggle" onclick="toggleAmounts()" id="privacy-toggle-btn">
-                    <span class="privacy-icon">👁️</span>
-                    <span class="privacy-text">Sembunyikan</span>
-                </button>
+    <!-- SECTION: FINANCE -->
+    <div id="view-finance" class="main-view">
+        <!-- Sub Tabs -->
+        <div class="pill-nav" id="finance-nav">
+            <button class="pill-btn active" onclick="switchFinanceTab('resume')">Beranda</button>
+            <button class="pill-btn" onclick="switchFinanceTab('saldo')">Dompet</button>
+            <button class="pill-btn" onclick="switchFinanceTab('hutang')">Hutang</button>
+            <button class="pill-btn" onclick="switchFinanceTab('grafik')">Analitik</button>
+            <button class="pill-btn" onclick="switchFinanceTab('pengaturan')">Pengaturan</button>
+        </div>
+
+        <!-- Tab: Resume (Beranda) -->
+        <div id="tab-resume" class="tab-content active">
+            <div class="balance-card">
+                <div class="balance-label">Total Saldo Aktif</div>
+                <div class="balance-amount" id="ui-total-balance">Rp 0</div>
             </div>
 
-            <!-- DASHBOARD CARDS -->
-            <div class="dashboard">
-                <div class="card balance">
-                    <h3>💰 Total Saldo</h3>
-                    <h2 id="total-balance">Rp 0</h2>
+            <div class="stats-grid">
+                <div class="stat-box income">
+                    <div class="stat-icon">↓</div>
+                    <div class="stat-label">Pemasukan (Bulan ini)</div>
+                    <div class="stat-val" id="ui-month-income">Rp 0</div>
                 </div>
-                <div class="card debt">
-                    <h3>📉 Saldo Hutang</h3>
-                    <h2 id="total-debt">Rp 0</h2>
-                </div>
-                <div class="card receivable">
-                    <h3>📈 Saldo Piutang</h3>
-                    <h2 id="total-receivable">Rp 0</h2>
+                <div class="stat-box expense">
+                    <div class="stat-icon">↑</div>
+                    <div class="stat-label">Pengeluaran (Bulan ini)</div>
+                    <div class="stat-val" id="ui-month-expense">Rp 0</div>
                 </div>
             </div>
 
-            <!-- SUB TABS -->
-            <nav class="sub-tabs">
-                <button class="sub-tab-btn active" onclick="showSubTab('finance', 'resume')">📊 Resume</button>
-                <button class="sub-tab-btn" onclick="showSubTab('finance', 'saldo')">💼 Saldo</button>
-                <button class="sub-tab-btn" onclick="showSubTab('finance', 'grafik')">📈 Grafik</button>
-                <button class="sub-tab-btn" onclick="showSubTab('finance', 'hutang')">🤝 Hutang</button>
-                <button class="sub-tab-btn" onclick="showSubTab('finance', 'pengaturan')">⚙️ Pengaturan</button>
-            </nav>
+            <h2 class="section-header">Transaksi Terakhir</h2>
+            <div class="list-group" id="ui-recent-transactions">
+                <!-- Transactions go here -->
+            </div>
+        </div>
 
-            <!-- SUB TAB: RESUME -->
-            <div id="finance-resume" class="sub-tab-content active">
-                <div class="filter-section">
-                    <label>📅 Periode:</label>
-                    <select id="finance-period">
-                        <option value="month">Bulan Ini</option>
-                        <option value="custom">Custom</option>
-                        <option value="all">Semua</option>
-                    </select>
-                    <input type="date" id="finance-start" style="display:none;">
-                    <input type="date" id="finance-end" style="display:none;">
+        <!-- Tab: Dompet (Saldo) -->
+        <div id="tab-saldo" class="tab-content">
+            <h2 class="section-header">Saldo Dompet & Rekening</h2>
+            <div class="list-group" id="ui-wallet-list-detail"></div>
+        </div>
+
+        <!-- Tab: Hutang -->
+        <div id="tab-hutang" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-box expense">
+                    <div class="stat-label">Total Hutang (Saya berhutang)</div>
+                    <div class="stat-val" id="ui-total-debt">Rp 0</div>
+                </div>
+                <div class="stat-box income">
+                    <div class="stat-label">Total Piutang (Uang saya di luar)</div>
+                    <div class="stat-val" id="ui-total-receivable">Rp 0</div>
+                </div>
+            </div>
+            <h2 class="section-header">Daftar Tagihan Aktif</h2>
+            <div id="ui-debt-list"></div>
+        </div>
+
+        <!-- Tab: Grafik -->
+        <div id="tab-grafik" class="tab-content">
+            <div class="chart-wrapper">
+                <h3 style="font-size:14px; margin-bottom:10px; color:#6b7280; text-align:center;">Pengeluaran Kategori</h3>
+                <canvas id="expenseChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <h3 style="font-size:14px; margin-bottom:10px; color:#6b7280; text-align:center;">Trend 6 Bulan</h3>
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tab: Pengaturan -->
+        <div id="tab-pengaturan" class="tab-content">
+            <div class="list-group" style="padding: 20px;">
+                <h2 class="section-header">Tambah Dompet</h2>
+                <form id="form-add-wallet">
+                    <div class="form-group">
+                        <input type="text" id="wallet-name-new" class="form-control" placeholder="Nama Dompet (Misal: OVO)" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="wallet-balance-new" class="form-control" placeholder="Saldo Awal" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="padding:12px;">Simpan Dompet</button>
+                </form>
+            </div>
+            <div class="list-group" style="padding: 20px;">
+                <h2 class="section-header">Kategori Baru</h2>
+                <div class="form-group">
+                    <input type="text" id="cat-name-new" class="form-control" placeholder="Nama Kategori">
+                </div>
+                <div class="stats-grid" style="margin-bottom:0;">
+                    <button class="btn-primary" style="background:var(--success); padding:10px;" onclick="addCategory('income')">+ Pemasukan</button>
+                    <button class="btn-primary" style="background:var(--danger); padding:10px;" onclick="addCategory('expense')">+ Pengeluaran</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION: HABIT -->
+    <div id="view-habit" class="main-view" style="display:none;">
+        <div class="pill-nav">
+            <button class="pill-btn active" onclick="switchHabitTab('checkin')">Check-in Hari Ini</button>
+            <button class="pill-btn" onclick="switchHabitTab('history')">Riwayat & Seting</button>
+        </div>
+
+        <div id="tab-habit-checkin" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">🔥 Streak</div>
+                    <div class="stat-val" style="color:var(--warning);" id="ui-habit-streak">0 Hari</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">⭐ Skor Hari Ini</div>
+                    <div class="stat-val" style="color:var(--primary);" id="ui-habit-today">0 Poin</div>
+                </div>
+            </div>
+            
+            <h2 class="section-header">Tugas Hari Ini</h2>
+            <div id="ui-habit-questions"></div>
+        </div>
+
+        <div id="tab-habit-history" class="tab-content">
+            <div class="list-group" style="padding: 20px;">
+                <h2 class="section-header">Buat Pertanyaan Baru</h2>
+                <form id="form-add-habit">
+                    <div class="form-group">
+                        <input type="text" id="habit-q-new" class="form-control" placeholder="Contoh: Udah olahraga?" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Skor (jika dilakukan)</label>
+                        <input type="number" id="habit-score-new" class="form-control" value="10" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="padding:12px;">Simpan Pertanyaan</button>
+                </form>
+            </div>
+            <h2 class="section-header">Riwayat Terbaru</h2>
+            <div class="list-group" id="ui-habit-history"></div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-finance" onclick="switchMainView('finance')">
+            <div class="nav-icon">💰</div>
+            <span>Keuangan</span>
+        </div>
+        <div class="nav-fab-wrapper">
+            <button class="nav-fab" onclick="openBottomSheet('menu')">+</button>
+        </div>
+        <div class="nav-item" id="nav-habit" onclick="switchMainView('habit')">
+            <div class="nav-icon">✅</div>
+            <span>Habits</span>
+        </div>
+    </nav>
+
+    <!-- BOTTOM SHEET (MODALS) -->
+    <div class="sheet-overlay" id="bottom-sheet-overlay" onclick="closeBottomSheet(event)">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-drag"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title" id="sheet-title">Pilih Aksi</h3>
+                <button class="btn-close" onclick="closeBottomSheet()">×</button>
+            </div>
+
+            <!-- Main Menu Grid -->
+            <div id="sheet-view-menu" class="modal-form-view active">
+                <div class="action-grid">
+                    <div class="action-btn" onclick="showForm('in')">
+                        <div class="action-btn-icon">💵</div>
+                        <div class="action-btn-text">Pemasukan</div>
+                    </div>
+                    <div class="action-btn" onclick="showForm('out')">
+                        <div class="action-btn-icon">💸</div>
+                        <div class="action-btn-text">Pengeluaran</div>
+                    </div>
+                    <div class="action-btn" onclick="showForm('tf')">
+                        <div class="action-btn-icon">🔄</div>
+                        <div class="action-btn-text">Transfer</div>
+                    </div>
+                    <div class="action-btn" onclick="showForm('debt')">
+                        <div class="action-btn-icon">🤝</div>
+                        <div class="action-btn-text">Hutang/Piutang</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Template (Dynamic) -->
+            <div id="sheet-view-form" class="modal-form-view">
+                <form id="dynamic-form">
+                    <input type="hidden" id="form-type">
                     
-                    <label>🏷️ Kategori:</label>
-                    <select id="finance-category-filter">
-                        <option value="all">Semua Kategori</option>
-                    </select>
+                    <div class="form-group" id="fg-date">
+                        <label>Tanggal</label>
+                        <input type="date" id="input-date" class="form-control" required>
+                    </div>
                     
-                    <button onclick="filterFinanceTransactions()">🔍 Filter</button>
-                </div>
-
-                <div class="resume-grid">
-                    <div class="resume-card income">
-                        <div class="resume-card-label">💵 Total Pemasukan</div>
-                        <div class="resume-card-amount" id="resume-income">Rp 0</div>
+                    <div class="form-group" id="fg-category">
+                        <label id="label-category">Kategori</label>
+                        <select id="input-category" class="form-control"></select>
                     </div>
-                    <div class="resume-card expense">
-                        <div class="resume-card-label">💸 Total Pengeluaran</div>
-                        <div class="resume-card-amount" id="resume-expense">Rp 0</div>
+
+                    <div class="form-group" id="fg-wallet">
+                        <label id="label-wallet">Dompet</label>
+                        <select id="input-wallet" class="form-control" required></select>
                     </div>
-                    <div class="resume-card balance">
-                        <div class="resume-card-label">💰 Selisih</div>
-                        <div class="resume-card-amount" id="resume-balance">Rp 0</div>
+
+                    <div class="form-group" id="fg-wallet-to" style="display:none;">
+                        <label>Ke Dompet</label>
+                        <select id="input-wallet-to" class="form-control"></select>
                     </div>
-                </div>
 
-                <h3 class="section-title">📋 Riwayat Transaksi</h3>
-                <div id="transaction-list" class="list"></div>
-            </div>
-
-            <!-- SUB TAB: SALDO -->
-            <div id="finance-saldo" class="sub-tab-content">
-                <h3 class="section-title">💼 Resume Saldo per Dompet/Rekening</h3>
-                
-                <div id="wallet-balance-list" class="resume-grid">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-
-                <h3 class="section-title">📋 Detail Transaksi per Dompet</h3>
-                <div id="wallet-detail-section">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-            </div>
-
-            <!-- SUB TAB: GRAFIK -->
-            <div id="finance-grafik" class="sub-tab-content">
-                <h3 class="section-title">📊 Analisis Keuangan</h3>
-                
-                <div class="chart-grid">
-                    <div class="chart-container">
-                        <h4>💸 Pengeluaran per Kategori</h4>
-                        <canvas id="expenseChart"></canvas>
+                    <div class="form-group" id="fg-person" style="display:none;">
+                        <label>Nama Orang</label>
+                        <input type="text" id="input-person" class="form-control" placeholder="Nama">
                     </div>
-                    <div class="chart-container">
-                        <h4>💵 Pemasukan per Kategori</h4>
-                        <canvas id="incomeChart"></canvas>
+
+                    <div class="form-group">
+                        <label>Nominal (Rp)</label>
+                        <input type="number" id="input-amount" class="form-control" placeholder="0" required>
                     </div>
-                </div>
 
-                <div class="chart-container">
-                    <h4>📈 Trend Bulanan</h4>
-                    <canvas id="trendChart"></canvas>
-                </div>
-            </div>
-
-            <!-- SUB TAB: HUTANG -->
-            <div id="finance-hutang" class="sub-tab-content">
-                <div class="resume-grid">
-                    <div class="resume-card expense">
-                        <div class="resume-card-label">📉 Total Hutang</div>
-                        <div class="resume-card-amount" id="debt-total">Rp 0</div>
+                    <div class="form-group" id="fg-note">
+                        <label>Catatan (Opsional)</label>
+                        <input type="text" id="input-note" class="form-control" placeholder="Keterangan...">
                     </div>
-                    <div class="resume-card income">
-                        <div class="resume-card-label">📈 Total Piutang</div>
-                        <div class="resume-card-amount" id="receivable-total">Rp 0</div>
-                    </div>
-                    <div class="resume-card balance">
-                        <div class="resume-card-label">💰 Selisih</div>
-                        <div class="resume-card-amount" id="debt-balance">Rp 0</div>
-                    </div>
-                </div>
 
-                <h3 class="section-title">📋 Daftar Hutang & Piutang</h3>
-                <div id="debt-list" class="list"></div>
-            </div>
-
-            <!-- SUB TAB: PENGATURAN -->
-            <div id="finance-pengaturan" class="sub-tab-content">
-                <div class="setting-section">
-                    <h4>💼 Kelola Dompet/Rekening</h4>
-                    <form id="wallet-form" class="form-inline">
-                        <input type="text" id="wallet-name" placeholder="Nama Dompet" required>
-                        <input type="number" id="wallet-balance" placeholder="Saldo Awal (Rp)" required>
-                        <button type="submit">➕ Tambah</button>
-                    </form>
-                    <div id="wallet-list" class="list"></div>
-                </div>
-
-                <div class="setting-section">
-                    <h4>💵 Kategori Pemasukan</h4>
-                    <form id="income-category-form" class="form-inline">
-                        <input type="text" id="income-category-name" placeholder="Nama Kategori" required>
-                        <button type="submit">➕ Tambah</button>
-                    </form>
-                    <div id="income-category-list" class="list"></div>
-                </div>
-
-                <div class="setting-section">
-                    <h4>💸 Kategori Pengeluaran</h4>
-                    <form id="expense-category-form" class="form-inline">
-                        <input type="text" id="expense-category-name" placeholder="Nama Kategori" required>
-                        <button type="submit">➕ Tambah</button>
-                    </form>
-                    <div id="expense-category-list" class="list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========== HABIT TAB ========== -->
-        <div id="habit-main" class="main-tab-content">
-            <!-- SUB TABS -->
-            <nav class="sub-tabs">
-                <button class="sub-tab-btn active" onclick="showSubTab('habit', 'resume')">📊 Resume</button>
-                <button class="sub-tab-btn" onclick="showSubTab('habit', 'pengaturan')">⚙️ Pengaturan</button>
-            </nav>
-
-            <!-- SUB TAB: RESUME -->
-            <div id="habit-resume" class="sub-tab-content active">
-                <div class="filter-section">
-                    <label>📅 Filter:</label>
-                    <input type="date" id="habit-start">
-                    <label>s/d</label>
-                    <input type="date" id="habit-end">
-                    <button onclick="filterHabitHistory()">🔍 Filter</button>
-                    <button onclick="resetHabitFilter()" style="background: #999;">🔄 Reset</button>
-                </div>
-
-                <div class="resume-grid">
-                    <div class="resume-card income">
-                        <div class="resume-card-label">⭐ Skor Hari Ini</div>
-                        <div class="resume-card-amount" id="habit-today-score" style="color: #667eea;">0</div>
-                    </div>
-                    <div class="resume-card expense">
-                        <div class="resume-card-label">🔥 Streak</div>
-                        <div class="resume-card-amount" id="habit-streak" style="color: #f5576c;">0 Hari</div>
-                    </div>
-                    <div class="resume-card balance">
-                        <div class="resume-card-label">📈 Avg Score</div>
-                        <div class="resume-card-amount" id="habit-avg" style="color: #4facfe;">0</div>
-                    </div>
-                </div>
-
-                <h3 class="section-title">📜 Riwayat Check-in</h3>
-                <div id="habit-history-list" class="list"></div>
-
-                <div class="habit-form">
-                    <h4>✅ Check-in Hari Ini</h4>
-                    <div id="checkin-container"></div>
-                </div>
-            </div>
-
-            <!-- SUB TAB: PENGATURAN -->
-            <div id="habit-pengaturan" class="sub-tab-content">
-                <div class="habit-form">
-                    <h4>➕ Buat Pertanyaan Habit Baru</h4>
-                    <form id="question-form">
-                        <div class="form-group">
-                            <label>Pertanyaan</label>
-                            <input type="text" id="question-text" placeholder="Contoh: Apakah saya olahraga hari ini?" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Tipe Jawaban</label>
-                            <select id="question-type" onchange="toggleQuestionType()">
-                                <option value="text">Isian Singkat (Teks)</option>
-                                <option value="multiple">Pilihan Ganda (dengan Skor)</option>
-                            </select>
-                        </div>
-
-                        <div id="options-section" style="display: none;">
-                            <div class="form-group">
-                                <label>Opsi Pilihan Ganda</label>
-                                <div class="options-builder" id="options-builder">
-                                    <div class="option-item">
-                                        <input type="text" placeholder="Contoh: Sangat Baik" class="option-label" autocomplete="off">
-                                        <input type="number" placeholder="Skor" class="option-score" value="5" min="0" max="100" autocomplete="off">
-                                        <button type="button" onclick="removeOption(this)" title="Hapus">✕</button>
-                                    </div>
-                                </div>
-                                <button type="button" class="add-option-btn" onclick="addOption()">➕ Tambah Opsi</button>
-                                <small style="color: #666; display: block; margin-top: 8px;">
-                                    💡 Contoh: "Sangat Baik" skor 5, "Baik" skor 4
-                                </small>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <button type="submit">💾 Simpan Pertanyaan</button>
-                        </div>
-                    </form>
-                </div>
-
-                <h3 class="section-title">📋 Daftar Pertanyaan</h3>
-                <div id="questions-list" class="list"></div>
+                    <button type="submit" class="btn-primary" id="btn-submit-form">Simpan</button>
+                    <button type="button" class="btn-primary" style="background:var(--bg); color:var(--text-main); margin-top:8px;" onclick="showForm('menu')">Kembali</button>
+                </form>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- FAB BUTTON -->
-    <button class="fab" id="fab-btn" onclick="openActionMenu()">➕</button>
+<script>
+// ================= STATE & DATA =================
+let data = { wallets: [], categories: { income: [], expense: [] }, transactions: [], transfers: [], debts: [], habitQuestions: [], habitRecords: [] };
+let isHidden = false;
+let charts = { expense: null, trend: null };
 
-    <!-- MODAL -->
-    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
-        <!-- ACTION MENU -->
-        <div class="action-menu" id="action-menu" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3>Pilih Aksi</h3>
-                <button class="action-menu-close" onclick="closeActionMenu()">✕</button>
+function loadData() {
+    const saved = localStorage.getItem('finhabit_v3');
+    if (saved) {
+        data = JSON.parse(saved);
+        // Migration checks
+        if(!data.transfers) data.transfers = [];
+        if(!data.debts) data.debts = [];
+        if(!data.habitQuestions) data.habitQuestions = [];
+        if(!data.habitRecords) data.habitRecords = [];
+    } else {
+        data.wallets = [
+            { id: 1, name: 'Tunai', balance: 0 },
+            { id: 2, name: 'Bank BCA', balance: 0 }
+        ];
+        data.categories = {
+            income: ['Gaji', 'Bonus', 'Lainnya'],
+            expense: ['Makan', 'Transport', 'Belanja', 'Tagihan']
+        };
+        saveData();
+    }
+}
+function saveData() { localStorage.setItem('finhabit_v3', JSON.stringify(data)); }
+function formatRp(num) { return isHidden ? 'Rp •••••' : 'Rp ' + parseInt(num).toLocaleString('id-ID'); }
+
+// ================= UI NAVIGATION =================
+function setDateHeader() {
+    const options = { weekday: 'long', day: 'numeric', month: 'long' };
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', options);
+    const hour = new Date().getHours();
+    let greet = 'Selamat Pagi';
+    if(hour > 11) greet = 'Selamat Siang';
+    if(hour > 14) greet = 'Selamat Sore';
+    if(hour > 18) greet = 'Selamat Malam';
+    document.getElementById('greeting-text').textContent = greet + '! 👋';
+}
+
+function togglePrivacy() {
+    isHidden = !isHidden;
+    document.getElementById('privacy-icon').textContent = isHidden ? '🙈' : '👁️';
+    updateAllUI();
+}
+
+function switchMainView(view) {
+    document.getElementById('view-finance').style.display = view === 'finance' ? 'block' : 'none';
+    document.getElementById('view-habit').style.display = view === 'habit' ? 'block' : 'none';
+    document.getElementById('nav-finance').classList.toggle('active', view === 'finance');
+    document.getElementById('nav-habit').classList.toggle('active', view === 'habit');
+    if(view === 'finance') setTimeout(renderCharts, 100);
+}
+
+function switchFinanceTab(tab) {
+    document.querySelectorAll('#finance-nav .pill-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.querySelectorAll('#view-finance .tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    if(tab === 'grafik') setTimeout(renderCharts, 100);
+}
+
+function switchHabitTab(tab) {
+    document.querySelectorAll('#view-habit .pill-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.querySelectorAll('#view-habit .tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-habit-' + tab).classList.add('active');
+}
+
+// ================= BOTTOM SHEET LOGIC =================
+function openBottomSheet() {
+    document.getElementById('bottom-sheet-overlay').classList.add('active');
+    showForm('menu');
+}
+
+function closeBottomSheet(e) {
+    if (e && e.target.id !== 'bottom-sheet-overlay') return;
+    document.getElementById('bottom-sheet-overlay').classList.remove('active');
+}
+
+function showForm(type) {
+    const vMenu = document.getElementById('sheet-view-menu');
+    const vForm = document.getElementById('sheet-view-form');
+    const title = document.getElementById('sheet-title');
+    const form = document.getElementById('dynamic-form');
+    
+    // Reset Form visibility
+    form.reset();
+    document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('form-type').value = type;
+    
+    const fgCat = document.getElementById('fg-category');
+    const fgWalTo = document.getElementById('fg-wallet-to');
+    const fgPerson = document.getElementById('fg-person');
+    const lblWal = document.getElementById('label-wallet');
+    
+    fgCat.style.display = 'block';
+    fgWalTo.style.display = 'none';
+    fgPerson.style.display = 'none';
+    lblWal.textContent = 'Dompet';
+
+    // Populate Selects
+    const selWal = document.getElementById('input-wallet');
+    const selWalTo = document.getElementById('input-wallet-to');
+    const selCat = document.getElementById('input-category');
+    
+    selWal.innerHTML = data.wallets.map(w => `<option value="${w.id}">${w.name} (${formatRp(w.balance)})</option>`).join('');
+    selWalTo.innerHTML = selWal.innerHTML;
+
+    if (type === 'menu') {
+        vMenu.classList.add('active'); vForm.classList.remove('active');
+        title.textContent = 'Pilih Aksi';
+        return;
+    }
+
+    vMenu.classList.remove('active'); vForm.classList.add('active');
+
+    if (type === 'in') {
+        title.textContent = 'Pemasukan Baru';
+        selCat.innerHTML = data.categories.income.map(c => `<option value="${c}">${c}</option>`).join('');
+    } else if (type === 'out') {
+        title.textContent = 'Pengeluaran Baru';
+        selCat.innerHTML = data.categories.expense.map(c => `<option value="${c}">${c}</option>`).join('');
+    } else if (type === 'tf') {
+        title.textContent = 'Transfer Saldo';
+        fgCat.style.display = 'none';
+        fgWalTo.style.display = 'block';
+        lblWal.textContent = 'Dari Dompet';
+    } else if (type === 'debt') {
+        title.textContent = 'Hutang / Piutang';
+        fgCat.style.display = 'block';
+        document.getElementById('label-category').textContent = 'Jenis';
+        selCat.innerHTML = `<option value="hutang">Saya Berhutang</option><option value="piutang">Saya Menghutangi</option>`;
+        fgPerson.style.display = 'block';
+        lblWal.textContent = 'Dompet Terkait';
+    } else if (type === 'pay_debt') {
+        title.textContent = 'Bayar Hutang/Piutang';
+        fgCat.style.display = 'none';
+        fgPerson.style.display = 'none';
+    }
+}
+
+// ================= CORE ACTIONS =================
+document.getElementById('dynamic-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const type = document.getElementById('form-type').value;
+    const date = document.getElementById('input-date').value;
+    const amount = parseFloat(document.getElementById('input-amount').value);
+    const note = document.getElementById('input-note').value;
+    const walletId = parseInt(document.getElementById('input-wallet').value);
+    const cat = document.getElementById('input-category').value;
+    
+    if (type === 'in' || type === 'out') {
+        data.transactions.unshift({ id: Date.now(), type: type === 'in' ? 'income' : 'expense', date, category: cat, walletId, amount, note });
+        const w = data.wallets.find(w => w.id === walletId);
+        if(w) w.balance += (type === 'in' ? amount : -amount);
+    } 
+    else if (type === 'tf') {
+        const toId = parseInt(document.getElementById('input-wallet-to').value);
+        if(walletId === toId) return alert('Pilih dompet tujuan yang berbeda!');
+        data.transfers.unshift({ id: Date.now(), date, fromId: walletId, toId, amount, note });
+        const wFrom = data.wallets.find(w => w.id === walletId);
+        const wTo = data.wallets.find(w => w.id === toId);
+        if(wFrom) wFrom.balance -= amount;
+        if(wTo) wTo.balance += amount;
+    }
+    else if (type === 'debt') {
+        const person = document.getElementById('input-person').value;
+        data.debts.unshift({ id: Date.now(), type: cat, person, amount, note, date, paid: false });
+        const w = data.wallets.find(w => w.id === walletId);
+        // Jika kita menghutangi (piutang), uang kita keluar. Jika kita berhutang, uang masuk.
+        if(w && cat === 'piutang') w.balance -= amount;
+        if(w && cat === 'hutang') w.balance += amount;
+    }
+    else if (type === 'pay_debt') {
+        const debtId = window.activeDebtId;
+        const d = data.debts.find(d => d.id === debtId);
+        if(d) {
+            d.paid = true;
+            const w = data.wallets.find(w => w.id === walletId);
+            // Bayar hutang = uang keluar. Terima piutang = uang masuk.
+            if(w && d.type === 'hutang') w.balance -= amount;
+            if(w && d.type === 'piutang') w.balance += amount;
+        }
+    }
+
+    saveData();
+    closeBottomSheet();
+    updateAllUI();
+});
+
+function deleteItem(type, id) {
+    if(!confirm('Hapus data ini?')) return;
+    if(type === 'trans') {
+        const t = data.transactions.find(x => x.id === id);
+        const w = data.wallets.find(w => w.id === t.walletId);
+        if(w) w.balance += (t.type === 'expense' ? t.amount : -t.amount);
+        data.transactions = data.transactions.filter(x => x.id !== id);
+    } else if (type === 'debt') {
+        data.debts = data.debts.filter(x => x.id !== id);
+    } else if (type === 'wallet') {
+        data.wallets = data.wallets.filter(x => x.id !== id);
+    }
+    saveData(); updateAllUI();
+}
+
+function openPayDebt(id, amount) {
+    window.activeDebtId = id;
+    openBottomSheet();
+    showForm('pay_debt');
+    document.getElementById('input-amount').value = amount;
+}
+
+// ================= SETTINGS =================
+document.getElementById('form-add-wallet').addEventListener('submit', function(e){
+    e.preventDefault();
+    data.wallets.push({
+        id: Date.now(),
+        name: document.getElementById('wallet-name-new').value,
+        balance: parseFloat(document.getElementById('wallet-balance-new').value)
+    });
+    saveData(); updateAllUI(); this.reset();
+});
+
+function addCategory(type) {
+    const name = document.getElementById('cat-name-new').value.trim();
+    if(!name) return;
+    if(!data.categories[type].includes(name)) {
+        data.categories[type].push(name);
+        saveData(); document.getElementById('cat-name-new').value = '';
+        alert('Kategori ditambahkan!');
+    }
+}
+
+// ================= HABITS =================
+document.getElementById('form-add-habit').addEventListener('submit', function(e){
+    e.preventDefault();
+    data.habitQuestions.push({
+        id: Date.now(),
+        q: document.getElementById('habit-q-new').value,
+        score: parseInt(document.getElementById('habit-score-new').value)
+    });
+    saveData(); updateAllUI(); this.reset();
+});
+
+function doHabit(qId, score) {
+    const today = new Date().toISOString().split('T')[0];
+    const exists = data.habitRecords.find(r => r.qId === qId && r.date === today);
+    if(exists) return; // Sudah
+    data.habitRecords.unshift({ id: Date.now(), qId, date: today, score });
+    saveData(); updateAllUI();
+}
+
+// ================= RENDER UI =================
+function updateAllUI() {
+    // 1. Balances
+    const total = data.wallets.reduce((s, w) => s + w.balance, 0);
+    document.getElementById('ui-total-balance').textContent = formatRp(total);
+
+    // 2. This Month Income/Expense
+    const now = new Date();
+    const monthTrans = data.transactions.filter(t => new Date(t.date).getMonth() === now.getMonth() && new Date(t.date).getFullYear() === now.getFullYear());
+    const inc = monthTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = monthTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    document.getElementById('ui-month-income').textContent = formatRp(inc);
+    document.getElementById('ui-month-expense').textContent = formatRp(exp);
+
+    // 3. Recent Transactions
+    const rtList = document.getElementById('ui-recent-transactions');
+    if(data.transactions.length === 0) {
+        rtList.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>Belum ada transaksi</p></div>`;
+    } else {
+        rtList.innerHTML = data.transactions.slice(0, 10).map(t => {
+            const isInc = t.type === 'income';
+            return `
+            <div class="list-item">
+                <div class="item-icon ${isInc ? 'in' : 'out'}">${isInc ? '↓' : '↑'}</div>
+                <div class="item-details">
+                    <div class="item-title">${t.category}</div>
+                    <div class="item-subtitle">${t.date} ${t.note ? '• '+t.note : ''}</div>
+                </div>
+                <div>
+                    <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
+                    <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('trans', ${t.id})">Hapus</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // 4. Wallets Detail
+    const wList = document.getElementById('ui-wallet-list-detail');
+    wList.innerHTML = data.wallets.map(w => `
+        <div class="list-item">
+            <div class="item-icon transfer">💼</div>
+            <div class="item-details">
+                <div class="item-title">${w.name}</div>
             </div>
-            <button class="action-btn" onclick="showForm('income')">
-                <div class="action-btn-icon">💵</div>
-                <div class="action-btn-content">
-                    <h4>Catat Pemasukan</h4>
-                    <p>Tambah pendapatan atau bonus</p>
-                </div>
-            </button>
-            <button class="action-btn" onclick="showForm('expense')">
-                <div class="action-btn-icon">💸</div>
-                <div class="action-btn-content">
-                    <h4>Catat Pengeluaran</h4>
-                    <p>Catat belanja atau biaya</p>
-                </div>
-            </button>
-            <button class="action-btn" onclick="showForm('transfer')">
-                <div class="action-btn-icon">🔄</div>
-                <div class="action-btn-content">
-                    <h4>Transfer Saldo</h4>
-                    <p>Pindahkan uang antar rekening</p>
-                </div>
-            </button>
-            <button class="action-btn" onclick="showForm('debt')">
-                <div class="action-btn-icon">🤝</div>
-                <div class="action-btn-content">
-                    <h4>Hutang / Piutang</h4>
-                    <p>Catat pinjaman atau tagihan</p>
-                </div>
-            </button>
-        </div>
-
-        <!-- FORM PEMASUKAN -->
-        <div class="action-menu modal-form" id="form-income" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3>💵 Catat Pemasukan</h3>
-                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            <div>
+                <div class="item-amount" style="color:var(--text-main);">${formatRp(w.balance)}</div>
+                <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('wallet', ${w.id})">Hapus</button>
             </div>
-            <form id="income-form">
-                <div class="form-group">
-                    <label>Tanggal</label>
-                    <input type="date" id="income-date" required>
-                </div>
-                <div class="form-group">
-                    <label>Kategori</label>
-                    <select id="income-category" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Dompet</label>
-                    <select id="income-wallet" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="number" id="income-amount" placeholder="Masukkan nominal" required>
-                </div>
-                <div class="form-group">
-                    <label>Catatan</label>
-                    <input type="text" id="income-note" placeholder="Tambahkan catatan...">
-                </div>
-                <div class="form-group">
-                    <button type="submit">💾 Simpan</button>
-                </div>
-            </form>
         </div>
+    `).join('');
 
-        <!-- FORM PENGELUARAN -->
-        <div class="action-menu modal-form" id="form-expense" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3>💸 Catat Pengeluaran</h3>
-                <button class="action-menu-close" onclick="backToMenu()">←</button>
+    // 5. Debts
+    const activeDebts = data.debts.filter(d => !d.paid);
+    const totHutang = activeDebts.filter(d => d.type === 'hutang').reduce((s,d)=>s+d.amount,0);
+    const totPiutang = activeDebts.filter(d => d.type === 'piutang').reduce((s,d)=>s+d.amount,0);
+    document.getElementById('ui-total-debt').textContent = formatRp(totHutang);
+    document.getElementById('ui-total-receivable').textContent = formatRp(totPiutang);
+    
+    const dList = document.getElementById('ui-debt-list');
+    if(activeDebts.length===0) dList.innerHTML = `<div class="empty-state"><div class="empty-icon">🤝</div><p>Bebas hutang!</p></div>`;
+    else dList.innerHTML = `<div class="list-group">` + activeDebts.map(d => {
+        const isHutang = d.type==='hutang';
+        return `
+        <div class="list-item">
+            <div class="item-icon ${isHutang ? 'out' : 'in'}">${isHutang ? 'H' : 'P'}</div>
+            <div class="item-details">
+                <div class="item-title">${d.person}</div>
+                <div class="item-subtitle">${d.date} • ${isHutang ? 'Saya Berhutang' : 'Saya Menghutangi'}</div>
             </div>
-            <form id="expense-form">
-                <div class="form-group">
-                    <label>Tanggal</label>
-                    <input type="date" id="expense-date" required>
-                </div>
-                <div class="form-group">
-                    <label>Kategori</label>
-                    <select id="expense-category" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Dompet</label>
-                    <select id="expense-wallet" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="number" id="expense-amount" placeholder="Masukkan nominal" required>
-                </div>
-                <div class="form-group">
-                    <label>Catatan</label>
-                    <input type="text" id="expense-note" placeholder="Tambahkan catatan...">
-                </div>
-                <div class="form-group">
-                    <button type="submit">💾 Simpan</button>
-                </div>
-            </form>
-        </div>
-
-        <!-- FORM TRANSFER -->
-        <div class="action-menu modal-form" id="form-transfer" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3>🔄 Transfer Saldo</h3>
-                <button class="action-menu-close" onclick="backToMenu()">←</button>
+            <div style="text-align:right;">
+                <div class="item-amount ${isHutang ? 'out' : 'in'}">${formatRp(d.amount)}</div>
+                <button class="btn-success" style="margin-top:4px;" onclick="openPayDebt(${d.id}, ${d.amount})">Lunas</button>
             </div>
-            <form id="transfer-form">
-                <div class="form-group">
-                    <label>Tanggal</label>
-                    <input type="date" id="transfer-date" required>
-                </div>
-                <div class="form-group">
-                    <label>Dari Dompet</label>
-                    <select id="transfer-from" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Ke Dompet</label>
-                    <select id="transfer-to" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="number" id="transfer-amount" placeholder="Masukkan nominal" required>
-                </div>
-                <div class="form-group">
-                    <label>Biaya Admin (Rp)</label>
-                    <input type="number" id="transfer-fee" placeholder="0" value="0">
-                </div>
-                <div class="form-group">
-                    <label>Catatan</label>
-                    <input type="text" id="transfer-note" placeholder="Tambahkan catatan...">
-                </div>
-                <div class="form-group">
-                    <button type="submit">🔄 Transfer</button>
-                </div>
-            </form>
-        </div>
+        </div>`;
+    }).join('') + `</div>`;
 
-        <!-- FORM HUTANG/PIUTANG -->
-        <div class="action-menu modal-form" id="form-debt" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3>🤝 Hutang / Piutang</h3>
-                <button class="action-menu-close" onclick="backToMenu()">←</button>
-            </div>
-            <form id="debt-form">
-                <div class="form-group">
-                    <label>Tipe</label>
-                    <select id="debt-type" onchange="toggleDebtWallet()" required>
-                        <option value="hutang">Saya Berhutang</option>
-                        <option value="piutang">Saya Menghutangi</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Nama Orang</label>
-                    <input type="text" id="debt-person" placeholder="Nama orang" required>
-                </div>
-                <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="number" id="debt-amount" placeholder="Masukkan nominal" required>
-                </div>
-                <div class="form-group" id="debt-wallet-group" style="display:none;">
-                    <label>Dari Dompet (Uang Keluar)</label>
-                    <select id="debt-wallet"></select>
-                    <small style="color:#666;display:block;margin-top:5px;">💡 Pilih dompet untuk menghutangi (uang keluar sekarang)</small>
-                </div>
-                <div class="form-group">
-                    <label>Catatan</label>
-                    <input type="text" id="debt-note" placeholder="Tambahkan catatan...">
-                </div>
-                <div class="form-group">
-                    <button type="submit">💾 Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    // 6. Habits
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayRecs = data.habitRecords.filter(r => r.date === todayStr);
+    const todayScore = todayRecs.reduce((s,r) => s+r.score, 0);
+    document.getElementById('ui-habit-today').textContent = todayScore + ' Poin';
+    
+    // Simple Streak Calc (Consecutive days with at least 1 record)
+    let streak = 0;
+    const uniqueDates = [...new Set(data.habitRecords.map(r=>r.date))].sort().reverse();
+    for(let i=0; i<uniqueDates.length; i++){
+        let d = new Date(); d.setDate(d.getDate()-i);
+        if(uniqueDates[i] === d.toISOString().split('T')[0]) streak++; else break;
+    }
+    document.getElementById('ui-habit-streak').textContent = streak + ' Hari';
 
-    <!-- MODAL PELUNASAN -->
-    <div class="modal-overlay" id="pay-debt-modal" onclick="closePayDebtModal(event)">
-        <div class="action-menu" onclick="event.stopPropagation()">
-            <div class="action-menu-header">
-                <h3 id="pay-debt-title">💰 Lunasi Hutang/Piutang</h3>
-                <button class="action-menu-close" onclick="closePayDebtModal()">✕</button>
-            </div>
-            <form id="pay-debt-form">
-                <div class="form-group">
-                    <label id="pay-amount-label">Nominal yang Dibayar/Diterima (Rp)</label>
-                    <input type="number" id="pay-amount" placeholder="Masukkan nominal" required>
-                    <small id="pay-remaining" style="color:#666;display:block;margin-top:5px;"></small>
-                </div>
-                <div class="form-group">
-                    <label id="pay-wallet-label">Dompet</label>
-                    <select id="pay-wallet" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Tanggal Pelunasan</label>
-                    <input type="date" id="pay-date" required>
-                </div>
-                <div class="form-group">
-                    <button type="submit">✅ Lunasi</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    const hQList = document.getElementById('ui-habit-questions');
+    if(data.habitQuestions.length===0) hQList.innerHTML = `<div class="empty-state">Buat pertanyaan di seting.</div>`;
+    else {
+        hQList.innerHTML = data.habitQuestions.map(q => {
+            const done = todayRecs.find(r => r.qId === q.id);
+            return `
+            <div class="habit-card">
+                <div class="habit-q">${q.q}</div>
+                ${done ? 
+                    `<div style="color:var(--success); font-weight:bold;">✅ Selesai (+${q.score} pts)</div>` : 
+                    `<button class="btn-primary" onclick="doHabit(${q.id}, ${q.score})">Sudah Dilakukan</button>`
+                }
+            </div>`;
+        }).join('');
+    }
+}
 
-    <!-- JavaScript -->
-    <script src="app.js"></script>
+// ================= CHARTS =================
+function renderCharts() {
+    if(isHidden) return; // Don't render details if hidden
+    const eCtx = document.getElementById('expenseChart');
+    const tCtx = document.getElementById('trendChart');
+    if(!eCtx || !tCtx) return;
+
+    // Expense Pie
+    const expCat = {};
+    data.transactions.filter(t=>t.type==='expense').forEach(t => expCat[t.category] = (expCat[t.category]||0)+t.amount);
+    
+    if(charts.expense) charts.expense.destroy();
+    charts.expense = new Chart(eCtx.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: Object.keys(expCat), datasets: [{ data: Object.values(expCat), backgroundColor: ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6'] }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Trend Bar
+    const months = ['Jan','Feb','Mar','Apr','Mei','Jun']; // simplified
+    const incD=[0,0,0,0,0,0], expD=[0,0,0,0,0,0];
+    
+    if(charts.trend) charts.trend.destroy();
+    charts.trend = new Chart(tCtx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                { label: 'Masuk', data: incD, backgroundColor: '#10b981' },
+                { label: 'Keluar', data: expD, backgroundColor: '#ef4444' }
+            ]
+        },
+        options: { responsive: true, scales: { y: { display: false } } }
+    });
+}
+
+// ================= INIT =================
+window.onload = () => {
+    loadData();
+    setDateHeader();
+    updateAllUI();
+    
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+    }
+};
+</script>
 </body>
 </html>
