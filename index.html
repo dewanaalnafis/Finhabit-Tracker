@@ -69,8 +69,15 @@
         .balance-card { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 24px; border-radius: 24px; color: white; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3); position: relative; overflow: hidden; }
         .balance-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
         .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
-        .balance-amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+        .balance-amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; position: relative; z-index: 1; }
         
+        /* Sub Balance Breakdown */
+        .sub-balance-box { display: flex; gap: 16px; margin-top: 16px; background: rgba(255,255,255,0.15); padding: 12px 16px; border-radius: 16px; backdrop-filter: blur(5px); position: relative; z-index: 1; }
+        .sub-balance-item { flex: 1; }
+        .sub-balance-label { font-size: 11px; opacity: 0.85; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sub-balance-val { font-size: 15px; font-weight: 600; }
+        .sub-balance-divider { width: 1px; background: rgba(255,255,255,0.2); }
+
         /* Stats Grid */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
         .stat-box { background: var(--surface); padding: 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
@@ -182,6 +189,19 @@
             <div class="balance-card">
                 <div class="balance-label">Total Saldo Aktif</div>
                 <div class="balance-amount" id="ui-total-balance">Rp 0</div>
+                
+                <!-- Breakdown Rekening & Tunai -->
+                <div class="sub-balance-box">
+                    <div class="sub-balance-item">
+                        <div class="sub-balance-label">💵 Tunai</div>
+                        <div class="sub-balance-val" id="ui-tunai-balance">Rp 0</div>
+                    </div>
+                    <div class="sub-balance-divider"></div>
+                    <div class="sub-balance-item">
+                        <div class="sub-balance-label">💳 Rekening</div>
+                        <div class="sub-balance-val" id="ui-rekening-balance">Rp 0</div>
+                    </div>
+                </div>
             </div>
 
             <div class="stats-grid">
@@ -205,7 +225,7 @@
 
         <!-- Tab: Dompet (Saldo) -->
         <div id="tab-saldo" class="tab-content">
-            <h2 class="section-header">Saldo Dompet & Rekening</h2>
+            <h2 class="section-header">Rincian Dompet & Rekening</h2>
             <div class="list-group" id="ui-wallet-list-detail"></div>
         </div>
 
@@ -240,13 +260,19 @@
         <!-- Tab: Pengaturan -->
         <div id="tab-pengaturan" class="tab-content">
             <div class="list-group" style="padding: 20px;">
-                <h2 class="section-header">Tambah Dompet</h2>
+                <h2 class="section-header">Tambah Dompet / Sub-Rekening</h2>
                 <form id="form-add-wallet">
                     <div class="form-group">
-                        <input type="text" id="wallet-name-new" class="form-control" placeholder="Nama Dompet (Misal: OVO)" required>
+                        <input type="text" id="wallet-name-new" class="form-control" placeholder="Nama (Misal: BCA Bisnis Parfum)" required>
                     </div>
                     <div class="form-group">
-                        <input type="number" id="wallet-balance-new" class="form-control" placeholder="Saldo Awal" required>
+                        <select id="wallet-type-new" class="form-control" required>
+                            <option value="rekening">💳 Rekening Bank / e-Wallet</option>
+                            <option value="tunai">💵 Uang Tunai</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="wallet-balance-new" class="form-control" placeholder="Saldo Awal (Rp)" required>
                     </div>
                     <button type="submit" class="btn-primary" style="padding:12px;">Simpan Dompet</button>
                 </form>
@@ -368,12 +394,12 @@
                     </div>
 
                     <div class="form-group" id="fg-wallet">
-                        <label id="label-wallet">Dompet</label>
+                        <label id="label-wallet">Dompet / Sub-Rekening</label>
                         <select id="input-wallet" class="form-control" required></select>
                     </div>
 
                     <div class="form-group" id="fg-wallet-to" style="display:none;">
-                        <label>Ke Dompet</label>
+                        <label>Ke Dompet / Sub-Rekening</label>
                         <select id="input-wallet-to" class="form-control"></select>
                     </div>
 
@@ -415,14 +441,23 @@ function loadData() {
         if(!data.debts) data.debts = [];
         if(!data.habitQuestions) data.habitQuestions = [];
         if(!data.habitRecords) data.habitRecords = [];
+        
+        // MIGRATION: Set wallet type if undefined
+        if(data.wallets) {
+            data.wallets.forEach(w => {
+                if(!w.type) {
+                    w.type = (w.name.toLowerCase().includes('tunai') || w.name.toLowerCase().includes('cash')) ? 'tunai' : 'rekening';
+                }
+            });
+        }
     } else {
         data.wallets = [
-            { id: 1, name: 'Tunai', balance: 0 },
-            { id: 2, name: 'Bank BCA', balance: 0 }
+            { id: 1, name: 'Tunai', type: 'tunai', balance: 0 },
+            { id: 2, name: 'Bank BCA Pribadi', type: 'rekening', balance: 0 }
         ];
         data.categories = {
-            income: ['Gaji', 'Bonus', 'Lainnya'],
-            expense: ['Makan', 'Transport', 'Belanja', 'Tagihan']
+            income: ['Gaji', 'Bonus', 'Penjualan Parfum', 'Lainnya'],
+            expense: ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Modal Parfum']
         };
         saveData();
     }
@@ -501,15 +536,20 @@ function showForm(type) {
     fgCat.style.display = 'block';
     fgWalTo.style.display = 'none';
     fgPerson.style.display = 'none';
-    lblWal.textContent = 'Dompet';
+    lblWal.textContent = 'Dompet / Sub-Rekening';
 
     // Populate Selects
     const selWal = document.getElementById('input-wallet');
     const selWalTo = document.getElementById('input-wallet-to');
     const selCat = document.getElementById('input-category');
     
-    selWal.innerHTML = data.wallets.map(w => `<option value="${w.id}">${w.name} (${formatRp(w.balance)})</option>`).join('');
-    selWalTo.innerHTML = selWal.innerHTML;
+    const walletOptions = data.wallets.map(w => {
+        const icon = w.type === 'tunai' ? '💵 ' : '💳 ';
+        return `<option value="${w.id}">${icon}${w.name} (${formatRp(w.balance)})</option>`;
+    }).join('');
+    
+    selWal.innerHTML = walletOptions;
+    selWalTo.innerHTML = walletOptions;
 
     if (type === 'menu') {
         vMenu.classList.add('active'); vForm.classList.remove('active');
@@ -572,7 +612,6 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
         const person = document.getElementById('input-person').value;
         data.debts.unshift({ id: Date.now(), type: cat, person, amount, note, date, paid: false });
         const w = data.wallets.find(w => w.id === walletId);
-        // Jika kita menghutangi (piutang), uang kita keluar. Jika kita berhutang, uang masuk.
         if(w && cat === 'piutang') w.balance -= amount;
         if(w && cat === 'hutang') w.balance += amount;
     }
@@ -582,7 +621,6 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
         if(d) {
             d.paid = true;
             const w = data.wallets.find(w => w.id === walletId);
-            // Bayar hutang = uang keluar. Terima piutang = uang masuk.
             if(w && d.type === 'hutang') w.balance -= amount;
             if(w && d.type === 'piutang') w.balance += amount;
         }
@@ -621,9 +659,11 @@ document.getElementById('form-add-wallet').addEventListener('submit', function(e
     data.wallets.push({
         id: Date.now(),
         name: document.getElementById('wallet-name-new').value,
+        type: document.getElementById('wallet-type-new').value,
         balance: parseFloat(document.getElementById('wallet-balance-new').value)
     });
     saveData(); updateAllUI(); this.reset();
+    alert('Dompet/Rekening berhasil ditambahkan!');
 });
 
 function addCategory(type) {
@@ -657,9 +697,14 @@ function doHabit(qId, score) {
 
 // ================= RENDER UI =================
 function updateAllUI() {
-    // 1. Balances
-    const total = data.wallets.reduce((s, w) => s + w.balance, 0);
-    document.getElementById('ui-total-balance').textContent = formatRp(total);
+    // 1. Balances & Breakdown
+    const totalBalance = data.wallets.reduce((s, w) => s + w.balance, 0);
+    const totalTunai = data.wallets.filter(w => w.type === 'tunai').reduce((s, w) => s + w.balance, 0);
+    const totalRekening = data.wallets.filter(w => w.type !== 'tunai').reduce((s, w) => s + w.balance, 0);
+    
+    document.getElementById('ui-total-balance').textContent = formatRp(totalBalance);
+    document.getElementById('ui-tunai-balance').textContent = formatRp(totalTunai);
+    document.getElementById('ui-rekening-balance').textContent = formatRp(totalRekening);
 
     // 2. This Month Income/Expense
     const now = new Date();
@@ -683,7 +728,7 @@ function updateAllUI() {
                     <div class="item-title">${t.category}</div>
                     <div class="item-subtitle">${t.date} ${t.note ? '• '+t.note : ''}</div>
                 </div>
-                <div>
+                <div style="text-align:right;">
                     <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
                     <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('trans', ${t.id})">Hapus</button>
                 </div>
@@ -695,11 +740,14 @@ function updateAllUI() {
     const wList = document.getElementById('ui-wallet-list-detail');
     wList.innerHTML = data.wallets.map(w => `
         <div class="list-item">
-            <div class="item-icon transfer">💼</div>
+            <div class="item-icon transfer" style="background:var(--bg); color:var(--text-main); font-size: 24px;">
+                ${w.type === 'tunai' ? '💵' : '💳'}
+            </div>
             <div class="item-details">
                 <div class="item-title">${w.name}</div>
+                <div class="item-subtitle">${w.type === 'tunai' ? 'Uang Tunai' : 'Rekening / e-Wallet'}</div>
             </div>
-            <div>
+            <div style="text-align:right;">
                 <div class="item-amount" style="color:var(--text-main);">${formatRp(w.balance)}</div>
                 <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('wallet', ${w.id})">Hapus</button>
             </div>
@@ -737,7 +785,7 @@ function updateAllUI() {
     const todayScore = todayRecs.reduce((s,r) => s+r.score, 0);
     document.getElementById('ui-habit-today').textContent = todayScore + ' Poin';
     
-    // Simple Streak Calc (Consecutive days with at least 1 record)
+    // Simple Streak Calc
     let streak = 0;
     const uniqueDates = [...new Set(data.habitRecords.map(r=>r.date))].sort().reverse();
     for(let i=0; i<uniqueDates.length; i++){
