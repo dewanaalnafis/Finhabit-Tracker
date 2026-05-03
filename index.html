@@ -39,7 +39,7 @@
         /* Mobile Container */
         .app-container {
             width: 100%;
-            max-width: 480px; /* Looks like a phone on desktop */
+            max-width: 480px;
             background: var(--bg);
             min-height: 100vh;
             position: relative;
@@ -54,7 +54,7 @@
         .greeting p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
         .privacy-btn { background: var(--surface); border: 1px solid var(--border); padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; display: flex; gap: 6px; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s; }
 
-        /* Scrollable Pill Nav (Sub-tabs) */
+        /* Scrollable Pill Nav */
         .pill-nav { display: flex; overflow-x: auto; gap: 10px; padding: 10px 20px; scrollbar-width: none; }
         .pill-nav::-webkit-scrollbar { display: none; }
         .pill-btn { padding: 8px 16px; border-radius: 24px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
@@ -91,7 +91,7 @@
         /* Section Title */
         .section-header { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; margin-top: 8px; }
 
-        /* List Items (Transactions, Debts) */
+        /* List Items */
         .list-group { background: var(--surface); border-radius: 20px; padding: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
         .list-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
         .list-item:last-child { border-bottom: none; }
@@ -180,9 +180,9 @@
 
     <!-- SECTION: FINANCE -->
     <div id="view-finance" class="main-view">
-        <!-- Sub Tabs (Pill Nav) - Hanya Beranda & Analitik sesuai permintaan -->
         <div class="pill-nav" id="finance-nav">
             <button class="pill-btn active" id="pill-resume" onclick="handleBottomNav('resume')">Beranda</button>
+            <button class="pill-btn" id="pill-riwayat" onclick="handleBottomNav('riwayat')">Riwayat 📅</button>
             <button class="pill-btn" id="pill-grafik" onclick="handleBottomNav('grafik')">Analitik 📈</button>
         </div>
 
@@ -191,8 +191,6 @@
             <div class="balance-card">
                 <div class="balance-label">Total Saldo Aktif</div>
                 <div class="balance-amount" id="ui-total-balance">Rp 0</div>
-                
-                <!-- Breakdown Rekening & Tunai -->
                 <div class="sub-balance-box">
                     <div class="sub-balance-item">
                         <div class="sub-balance-label">💵 Tunai</div>
@@ -220,9 +218,29 @@
             </div>
 
             <h2 class="section-header">Transaksi Terakhir</h2>
-            <div class="list-group" id="ui-recent-transactions">
-                <!-- Transactions go here -->
+            <div class="list-group" id="ui-recent-transactions"></div>
+        </div>
+
+        <!-- Tab: Riwayat Kalender (BARU) -->
+        <div id="tab-riwayat" class="tab-content">
+            <h2 class="section-header">Pencarian Kalender</h2>
+            <div class="form-group" style="background:var(--surface); padding:16px; border-radius:16px; margin-bottom:16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+                <label>Pilih Bulan (Tahun-Bulan)</label>
+                <input type="month" id="filter-month" class="form-control" onchange="renderHistoryTab()">
             </div>
+            
+            <div class="stats-grid" style="margin-bottom: 16px;">
+                <div class="stat-box income" style="padding: 12px;">
+                    <div class="stat-label">Total Masuk</div>
+                    <div class="stat-val" id="ui-history-income">Rp 0</div>
+                </div>
+                <div class="stat-box expense" style="padding: 12px;">
+                    <div class="stat-label">Total Keluar</div>
+                    <div class="stat-val" id="ui-history-expense">Rp 0</div>
+                </div>
+            </div>
+
+            <div class="list-group" id="ui-history-list"></div>
         </div>
 
         <!-- Tab: Dompet (Saldo) -->
@@ -245,6 +263,9 @@
             </div>
             <h2 class="section-header">Daftar Tagihan Aktif</h2>
             <div id="ui-debt-list"></div>
+            
+            <h2 class="section-header" style="margin-top: 30px;">Riwayat Lunas</h2>
+            <div id="ui-debt-paid-list"></div>
         </div>
 
         <!-- Tab: Grafik -->
@@ -261,7 +282,6 @@
 
         <!-- Tab: Pengaturan -->
         <div id="tab-pengaturan" class="tab-content">
-            <!-- Tambah Dompet -->
             <div class="list-group" style="padding: 20px;">
                 <h2 class="section-header">Tambah Dompet / Sub-Rekening</h2>
                 <form id="form-add-wallet">
@@ -281,7 +301,6 @@
                 </form>
             </div>
             
-            <!-- Kategori Baru -->
             <div class="list-group" style="padding: 20px;">
                 <h2 class="section-header">Kategori Baru</h2>
                 <div class="form-group">
@@ -293,12 +312,10 @@
                 </div>
             </div>
 
-            <!-- Kelola Kategori (List Category) -->
             <div class="list-group" style="padding: 20px;">
                 <h2 class="section-header">Kelola Kategori</h2>
                 <h3 style="font-size: 14px; margin-top: 10px; margin-bottom: 5px; color: var(--success);">Pemasukan</h3>
                 <div id="ui-category-list-income" style="margin-bottom: 20px;"></div>
-
                 <h3 style="font-size: 14px; margin-top: 10px; margin-bottom: 5px; color: var(--danger);">Pengeluaran</h3>
                 <div id="ui-category-list-expense"></div>
             </div>
@@ -347,7 +364,7 @@
         </div>
     </div>
 
-    <!-- BOTTOM NAVIGATION (MUSCLE MEMORY NATIVE) -->
+    <!-- BOTTOM NAVIGATION -->
     <nav class="bottom-nav">
         <div class="nav-item active" id="nav-resume" onclick="handleBottomNav('resume')">
             <div class="nav-icon">🏠</div>
@@ -379,7 +396,6 @@
                 <button class="btn-close" onclick="closeBottomSheet()">×</button>
             </div>
 
-            <!-- Main Menu Grid -->
             <div id="sheet-view-menu" class="modal-form-view active">
                 <div class="action-grid">
                     <div class="action-btn" onclick="showForm('in')">
@@ -401,10 +417,9 @@
                 </div>
             </div>
 
-            <!-- Form Template (Dynamic) -->
             <div id="sheet-view-form" class="modal-form-view">
                 <form id="dynamic-form">
-                    <input type="hidden" id="edit-id"> <!-- Hidden ID untuk mode Edit -->
+                    <input type="hidden" id="edit-id"> 
                     <input type="hidden" id="form-type">
                     
                     <div class="form-group" id="fg-date">
@@ -433,7 +448,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Nominal (Rp)</label>
+                        <label id="label-amount">Nominal (Rp)</label>
                         <input type="number" id="input-amount" class="form-control" placeholder="0" required>
                     </div>
 
@@ -453,25 +468,21 @@
 <script>
 // ================= STATE & DATA =================
 let data = { wallets: [], categories: { income: [], expense: [] }, transactions: [], transfers: [], debts: [], habitQuestions: [], habitRecords: [] };
-let isHidden = true; // Defaultnya mata tertutup / nominal di sensor
+let isHidden = true; // Default tertutup
 let charts = { expense: null, trend: null };
 
 function loadData() {
     const saved = localStorage.getItem('finhabit_v3');
     if (saved) {
         data = JSON.parse(saved);
-        // Migration checks
         if(!data.transfers) data.transfers = [];
         if(!data.debts) data.debts = [];
         if(!data.habitQuestions) data.habitQuestions = [];
         if(!data.habitRecords) data.habitRecords = [];
         
-        // MIGRATION: Set wallet type if undefined
         if(data.wallets) {
             data.wallets.forEach(w => {
-                if(!w.type) {
-                    w.type = (w.name.toLowerCase().includes('tunai') || w.name.toLowerCase().includes('cash')) ? 'tunai' : 'rekening';
-                }
+                if(!w.type) w.type = (w.name.toLowerCase().includes('tunai') || w.name.toLowerCase().includes('cash')) ? 'tunai' : 'rekening';
             });
         }
     } else {
@@ -501,16 +512,23 @@ function setDateHeader() {
     document.getElementById('greeting-text').textContent = greet + '! 👋';
 }
 
+function initMonthPicker() {
+    const filterEl = document.getElementById('filter-month');
+    if(!filterEl.value) {
+        const now = new Date();
+        filterEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    }
+}
+
 function togglePrivacy() {
     isHidden = !isHidden;
     document.getElementById('privacy-icon').textContent = isHidden ? '🙈' : '👁️';
     updateAllUI();
 }
 
-// Logic untuk Toggle Tab Habit di header
 function toggleHabitView() {
     if (document.getElementById('view-habit').style.display === 'block') {
-        handleBottomNav('resume'); // Jika sedang di habit, kembali ke beranda keuangan
+        handleBottomNav('resume'); 
     } else {
         switchMainView('habit');
     }
@@ -520,42 +538,34 @@ function switchMainView(view) {
     document.getElementById('view-finance').style.display = view === 'finance' ? 'block' : 'none';
     document.getElementById('view-habit').style.display = view === 'habit' ? 'block' : 'none';
     
-    // Atur tampilan tombol Habit
     const btnHabit = document.getElementById('btn-habit-view');
     if (view === 'habit') {
         btnHabit.style.background = 'var(--text-main)';
         btnHabit.style.color = 'var(--surface)';
-        // Nonaktifkan sorotan navigasi bawah
         document.querySelectorAll('.bottom-nav .nav-item').forEach(b => b.classList.remove('active'));
     } else {
         btnHabit.style.background = 'var(--surface)';
         btnHabit.style.color = 'var(--text-main)';
     }
-
     if(view === 'finance') setTimeout(renderCharts, 100);
 }
 
-// Terhubung dengan Bottom Nav (Muscle memory)
 function handleBottomNav(tab) {
-    switchMainView('finance'); // Pastikan selalu berpindah ke Finance View
+    switchMainView('finance');
     switchFinanceTab(tab);
 }
 
 function switchFinanceTab(tab) {
-    // Reset semua tampilan
     document.querySelectorAll('#view-finance .tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.bottom-nav .nav-item').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.pill-nav .pill-btn').forEach(b => b.classList.remove('active'));
     
-    // Tampilkan konten tab
     const content = document.getElementById('tab-' + tab);
     if(content) content.classList.add('active');
     
-    // Sorot bottom nav (jika ada)
     const navItem = document.getElementById('nav-' + tab);
     if(navItem) navItem.classList.add('active');
     
-    // Sorot pill nav (jika ada, seperti Beranda atau Analitik)
     const pillItem = document.getElementById('pill-' + tab);
     if(pillItem) pillItem.classList.add('active');
     
@@ -586,7 +596,7 @@ function showForm(type) {
     const title = document.getElementById('sheet-title');
     const form = document.getElementById('dynamic-form');
     
-    // Reset Form visibility & Pastikan mode Edit mati
+    // RESET DEFAULT STATE
     form.reset();
     document.getElementById('edit-id').value = '';
     document.getElementById('btn-submit-form').textContent = 'Simpan';
@@ -596,14 +606,32 @@ function showForm(type) {
     const fgCat = document.getElementById('fg-category');
     const fgWalTo = document.getElementById('fg-wallet-to');
     const fgPerson = document.getElementById('fg-person');
-    const lblWal = document.getElementById('label-wallet');
     
+    const fgWallet = document.getElementById('fg-wallet');
+    const lblWal = document.getElementById('label-wallet');
+    const inputWallet = document.getElementById('input-wallet');
+    
+    const fgDate = document.getElementById('fg-date');
+    const inputDate = document.getElementById('input-date');
+    const fgNote = document.getElementById('fg-note');
+    
+    const lblAmount = document.getElementById('label-amount');
+    
+    // Set to Defaults
     fgCat.style.display = 'block';
     fgWalTo.style.display = 'none';
     fgPerson.style.display = 'none';
+    
+    fgWallet.style.display = 'block';
+    inputWallet.required = true; 
+    
+    fgDate.style.display = 'block';
+    inputDate.required = true;
+    fgNote.style.display = 'block';
+    
     lblWal.textContent = 'Dompet / Sub-Rekening';
+    lblAmount.textContent = 'Nominal (Rp)';
 
-    // Populate Selects
     const selWal = document.getElementById('input-wallet');
     const selWalTo = document.getElementById('input-wallet-to');
     const selCat = document.getElementById('input-category');
@@ -643,10 +671,34 @@ function showForm(type) {
         fgPerson.style.display = 'block';
         lblWal.textContent = 'Dompet Terkait';
     } else if (type === 'pay_debt') {
-        title.textContent = 'Bayar Hutang/Piutang';
+        title.textContent = 'Bayar/Terima Cicilan';
         fgCat.style.display = 'none';
         fgPerson.style.display = 'none';
+        lblAmount.textContent = 'Nominal Pembayaran (Rp)';
+    } else if (type === 'edit_wallet') {
+        // Mode edit dompet tidak butuh kategori, dompet selector, tanggal, catatan
+        title.textContent = 'Penyesuaian Saldo';
+        fgCat.style.display = 'none';
+        fgWalTo.style.display = 'none';
+        fgPerson.style.display = 'none';
+        fgWallet.style.display = 'none';
+        inputWallet.required = false;
+        fgDate.style.display = 'none';
+        inputDate.required = false;
+        fgNote.style.display = 'none';
+        lblAmount.textContent = 'Saldo Aktual Saat Ini (Rp)';
     }
+}
+
+function openEditWallet(id) {
+    const w = data.wallets.find(x => x.id === id);
+    if(!w) return;
+    openBottomSheet();
+    showForm('edit_wallet');
+    document.getElementById('edit-id').value = w.id;
+    document.getElementById('input-amount').value = w.balance;
+    document.getElementById('sheet-title').textContent = 'Ubah Saldo ' + w.name;
+    document.getElementById('btn-submit-form').textContent = 'Simpan Saldo Baru';
 }
 
 // ================= CORE ACTIONS =================
@@ -662,14 +714,11 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     
     if (type === 'in' || type === 'out') {
         if (editId) {
-            // MODE EDIT
             const t = data.transactions.find(x => x.id === parseInt(editId));
             if (t) {
-                // 1. Batalkan nominal lama pada dompet lama
                 const oldW = data.wallets.find(w => w.id === t.walletId);
                 if (oldW) oldW.balance -= (t.type === 'income' ? t.amount : -t.amount);
                 
-                // 2. Perbarui data transaksi
                 t.type = type === 'in' ? 'income' : 'expense';
                 t.date = date;
                 t.category = cat;
@@ -677,12 +726,10 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
                 t.amount = amount;
                 t.note = note;
 
-                // 3. Tambahkan nominal baru pada dompet baru/sama
                 const newW = data.wallets.find(w => w.id === walletId);
                 if (newW) newW.balance += (t.type === 'income' ? amount : -amount);
             }
         } else {
-            // MODE TAMBAH BARU
             data.transactions.unshift({ id: Date.now(), type: type === 'in' ? 'income' : 'expense', date, category: cat, walletId, amount, note });
             const w = data.wallets.find(w => w.id === walletId);
             if(w) w.balance += (type === 'in' ? amount : -amount);
@@ -699,20 +746,52 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     }
     else if (type === 'debt') {
         const person = document.getElementById('input-person').value;
-        data.debts.unshift({ id: Date.now(), type: cat, person, amount, note, date, paid: false });
-        const w = data.wallets.find(w => w.id === walletId);
-        if(w && cat === 'piutang') w.balance -= amount;
-        if(w && cat === 'hutang') w.balance += amount;
+        if (editId) {
+            const d = data.debts.find(x => x.id === parseInt(editId));
+            if (d) {
+                d.type = cat;
+                d.person = person;
+                d.amount = amount; 
+                d.note = note;
+                d.date = date;
+            }
+        } else {
+            data.debts.unshift({ id: Date.now(), type: cat, person, amount, note, date, paid: false });
+            const w = data.wallets.find(w => w.id === walletId);
+            if(w && cat === 'piutang') w.balance -= amount;
+            if(w && cat === 'hutang') w.balance += amount;
+        }
     }
     else if (type === 'pay_debt') {
         const debtId = window.activeDebtId;
         const d = data.debts.find(d => d.id === debtId);
         if(d) {
-            d.paid = true;
+            d.amount -= amount;
+            
+            if (d.amount <= 0) {
+                d.paid = true;
+                d.amount = 0; 
+            }
+            
             const w = data.wallets.find(w => w.id === walletId);
-            if(w && d.type === 'hutang') w.balance -= amount;
-            if(w && d.type === 'piutang') w.balance += amount;
+            if(w && d.type === 'hutang') w.balance -= amount; 
+            if(w && d.type === 'piutang') w.balance += amount; 
+
+            data.transactions.unshift({ 
+                id: Date.now(), 
+                type: d.type === 'hutang' ? 'expense' : 'income', 
+                date, 
+                category: d.type === 'hutang' ? 'Bayar Hutang' : 'Terima Piutang', 
+                walletId, 
+                amount, 
+                note: d.person + (note ? ` (${note})` : '')
+            });
         }
+    }
+    else if (type === 'edit_wallet') {
+        // HANYA UBAH SALDO SECARA DIAM-DIAM, TIDAK ADA LOG TRANSAKSI MASUK/KELUAR
+        const w = data.wallets.find(w => w.id === parseInt(editId));
+        if (w) w.balance = amount;
     }
 
     saveData();
@@ -720,26 +799,49 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     updateAllUI();
 });
 
-// Fitur Edit Transaksi
 function editTransaction(id) {
     const t = data.transactions.find(x => x.id === id);
     if(!t) return;
-    
-    // Buka form
     document.getElementById('bottom-sheet-overlay').classList.add('active');
     showForm(t.type === 'income' ? 'in' : 'out');
-    
-    // Isi data lama
     document.getElementById('edit-id').value = t.id;
     document.getElementById('input-date').value = t.date;
     document.getElementById('input-category').value = t.category;
     document.getElementById('input-wallet').value = t.walletId;
     document.getElementById('input-amount').value = t.amount;
     document.getElementById('input-note').value = t.note || '';
-    
-    // Ubah teks UI
     document.getElementById('sheet-title').textContent = 'Edit ' + (t.type === 'income' ? 'Pemasukan' : 'Pengeluaran');
     document.getElementById('btn-submit-form').textContent = 'Update Data';
+}
+
+function editDebt(id) {
+    const d = data.debts.find(x => x.id === id);
+    if(!d) return;
+    document.getElementById('bottom-sheet-overlay').classList.add('active');
+    showForm('debt');
+    
+    document.getElementById('edit-id').value = d.id;
+    document.getElementById('input-date').value = d.date;
+    document.getElementById('input-category').value = d.type;
+    document.getElementById('input-person').value = d.person;
+    document.getElementById('input-amount').value = d.amount;
+    document.getElementById('input-note').value = d.note || '';
+    
+    document.getElementById('fg-wallet').style.display = 'none';
+    document.getElementById('input-wallet').required = false;
+
+    document.getElementById('sheet-title').textContent = 'Edit Sisa Tagihan';
+    document.getElementById('btn-submit-form').textContent = 'Simpan Sisa Tagihan';
+}
+
+function undoDebt(id) {
+    if(!confirm('Kembalikan tagihan ini ke daftar belum lunas?')) return;
+    const d = data.debts.find(x => x.id === id);
+    if(d) {
+        d.paid = false;
+        saveData();
+        updateAllUI();
+    }
 }
 
 function deleteItem(type, id) {
@@ -761,7 +863,8 @@ function openPayDebt(id, amount) {
     window.activeDebtId = id;
     openBottomSheet();
     showForm('pay_debt');
-    document.getElementById('input-amount').value = amount;
+    document.getElementById('input-amount').value = ''; 
+    document.getElementById('input-amount').placeholder = `Sisa: Rp ${parseInt(amount).toLocaleString('id-ID')}`;
 }
 
 // ================= SETTINGS =================
@@ -784,12 +887,12 @@ function addCategory(type) {
         data.categories[type].push(name);
         saveData(); document.getElementById('cat-name-new').value = '';
         alert('Kategori ditambahkan!');
-        updateAllUI(); // Segarkan UI agar kategori langsung muncul
+        updateAllUI(); 
     }
 }
 
 function deleteCategory(type, index) {
-    if(!confirm('Hapus kategori ini dari pilihan menu? (Tenang, histori transaksi lama tidak akan terhapus)')) return;
+    if(!confirm('Hapus kategori ini? (Histori lama tidak terhapus)')) return;
     data.categories[type].splice(index, 1);
     saveData();
     updateAllUI();
@@ -809,14 +912,13 @@ document.getElementById('form-add-habit').addEventListener('submit', function(e)
 function doHabit(qId, score) {
     const today = new Date().toISOString().split('T')[0];
     const exists = data.habitRecords.find(r => r.qId === qId && r.date === today);
-    if(exists) return; // Sudah
+    if(exists) return; 
     data.habitRecords.unshift({ id: Date.now(), qId, date: today, score });
     saveData(); updateAllUI();
 }
 
 // ================= RENDER UI =================
 function updateAllUI() {
-    // 1. Balances & Breakdown
     const totalBalance = data.wallets.reduce((s, w) => s + w.balance, 0);
     const totalTunai = data.wallets.filter(w => w.type === 'tunai').reduce((s, w) => s + w.balance, 0);
     const totalRekening = data.wallets.filter(w => w.type !== 'tunai').reduce((s, w) => s + w.balance, 0);
@@ -825,7 +927,6 @@ function updateAllUI() {
     document.getElementById('ui-tunai-balance').textContent = formatRp(totalTunai);
     document.getElementById('ui-rekening-balance').textContent = formatRp(totalRekening);
 
-    // 2. This Month Income/Expense
     const now = new Date();
     const monthTrans = data.transactions.filter(t => new Date(t.date).getMonth() === now.getMonth() && new Date(t.date).getFullYear() === now.getFullYear());
     const inc = monthTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -833,7 +934,6 @@ function updateAllUI() {
     document.getElementById('ui-month-income').textContent = formatRp(inc);
     document.getElementById('ui-month-expense').textContent = formatRp(exp);
 
-    // 3. Recent Transactions
     const rtList = document.getElementById('ui-recent-transactions');
     if(data.transactions.length === 0) {
         rtList.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>Belum ada transaksi</p></div>`;
@@ -858,7 +958,6 @@ function updateAllUI() {
         }).join('');
     }
 
-    // 4. Wallets Detail
     const wList = document.getElementById('ui-wallet-list-detail');
     wList.innerHTML = data.wallets.map(w => `
         <div class="list-item">
@@ -870,13 +969,13 @@ function updateAllUI() {
                 <div class="item-subtitle">${w.type === 'tunai' ? 'Uang Tunai' : 'Rekening / e-Wallet'}</div>
             </div>
             <div style="text-align:right;">
-                <div class="item-amount" style="color:var(--text-main);">${formatRp(w.balance)}</div>
-                <button class="btn-danger" style="margin-top:4px;" onclick="deleteItem('wallet', ${w.id})">Hapus</button>
+                <div class="item-amount" style="color:var(--text-main); margin-bottom:4px;">${formatRp(w.balance)}</div>
+                <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; background: var(--warning); color: #000;" onclick="openEditWallet(${w.id})">✎ Edit Saldo</button>
+                <button class="btn-danger" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="deleteItem('wallet', ${w.id})">Hapus</button>
             </div>
         </div>
     `).join('');
 
-    // 5. Debts
     const activeDebts = data.debts.filter(d => !d.paid);
     const totHutang = activeDebts.filter(d => d.type === 'hutang').reduce((s,d)=>s+d.amount,0);
     const totPiutang = activeDebts.filter(d => d.type === 'piutang').reduce((s,d)=>s+d.amount,0);
@@ -896,18 +995,38 @@ function updateAllUI() {
             </div>
             <div style="text-align:right;">
                 <div class="item-amount ${isHutang ? 'out' : 'in'}">${formatRp(d.amount)}</div>
-                <button class="btn-success" style="margin-top:4px;" onclick="openPayDebt(${d.id}, ${d.amount})">Lunas</button>
+                <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap;">
+                    <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; background: var(--text-muted);" onclick="editDebt(${d.id})">✎ Edit</button>
+                    <button class="btn-success" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="openPayDebt(${d.id}, ${d.amount})">Bayar</button>
+                    <button class="btn-danger" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="deleteItem('debt', ${d.id})">Hapus</button>
+                </div>
             </div>
         </div>`;
     }).join('') + `</div>`;
 
-    // 6. Habits
+    const paidDebts = data.debts.filter(d => d.paid);
+    const pList = document.getElementById('ui-debt-paid-list');
+    if(paidDebts.length===0) pList.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Belum ada riwayat lunas</p></div>`;
+    else pList.innerHTML = `<div class="list-group" style="opacity: 0.8;">` + paidDebts.map(d => {
+        return `
+        <div class="list-item">
+            <div class="item-icon" style="background:var(--border); color:var(--text-muted);">✅</div>
+            <div class="item-details">
+                <div class="item-title" style="text-decoration: line-through;">${d.person}</div>
+                <div class="item-subtitle">${d.date}</div>
+            </div>
+            <div style="text-align:right;">
+                <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; background: var(--warning); margin-bottom: 4px;" onclick="undoDebt(${d.id})">Batal Lunas</button><br>
+                <button class="btn-danger" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="deleteItem('debt', ${d.id})">Hapus</button>
+            </div>
+        </div>`;
+    }).join('') + `</div>`;
+
     const todayStr = new Date().toISOString().split('T')[0];
     const todayRecs = data.habitRecords.filter(r => r.date === todayStr);
     const todayScore = todayRecs.reduce((s,r) => s+r.score, 0);
     document.getElementById('ui-habit-today').textContent = todayScore + ' Poin';
     
-    // Simple Streak Calc
     let streak = 0;
     const uniqueDates = [...new Set(data.habitRecords.map(r=>r.date))].sort().reverse();
     for(let i=0; i<uniqueDates.length; i++){
@@ -932,8 +1051,8 @@ function updateAllUI() {
         }).join('');
     }
 
-    // 7. Render Categories in Settings
     renderCategoryList();
+    renderHistoryTab(); // Panggil render kalender
 }
 
 function renderCategoryList() {
@@ -956,14 +1075,52 @@ function renderCategoryList() {
     `).join('');
 }
 
+// Render Tab Riwayat (Kalender)
+function renderHistoryTab() {
+    const filterEl = document.getElementById('filter-month');
+    if(!filterEl.value) return; // Jika belum ada nilai, skip dulu (di-handle di onload)
+    
+    const yyyyMm = filterEl.value;
+    const filteredTrans = data.transactions.filter(t => t.date.startsWith(yyyyMm));
+    
+    const inc = filteredTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = filteredTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    
+    document.getElementById('ui-history-income').textContent = formatRp(inc);
+    document.getElementById('ui-history-expense').textContent = formatRp(exp);
+    
+    const listEl = document.getElementById('ui-history-list');
+    if(filteredTrans.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><p>Tidak ada transaksi di bulan ini</p></div>`;
+    } else {
+        listEl.innerHTML = filteredTrans.map(t => {
+            const isInc = t.type === 'income';
+            return `
+            <div class="list-item">
+                <div class="item-icon ${isInc ? 'in' : 'out'}">${isInc ? '↓' : '↑'}</div>
+                <div class="item-details">
+                    <div class="item-title">${t.category}</div>
+                    <div class="item-subtitle">${t.date} ${t.note ? '• '+t.note : ''}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
+                    <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px;">
+                        <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; background: var(--text-muted);" onclick="editTransaction(${t.id})">✎ Edit</button>
+                        <button class="btn-danger" style="padding: 4px 10px; font-size: 11px; margin: 0;" onclick="deleteItem('trans', ${t.id})">Hapus</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+}
+
 // ================= CHARTS =================
 function renderCharts() {
-    if(isHidden) return; // Don't render details if hidden
+    if(isHidden) return; 
     const eCtx = document.getElementById('expenseChart');
     const tCtx = document.getElementById('trendChart');
     if(!eCtx || !tCtx) return;
 
-    // Expense Pie
     const expCat = {};
     data.transactions.filter(t=>t.type==='expense').forEach(t => expCat[t.category] = (expCat[t.category]||0)+t.amount);
     
@@ -974,8 +1131,7 @@ function renderCharts() {
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // Trend Bar
-    const months = ['Jan','Feb','Mar','Apr','Mei','Jun']; // simplified
+    const months = ['Jan','Feb','Mar','Apr','Mei','Jun']; 
     const incD=[0,0,0,0,0,0], expD=[0,0,0,0,0,0];
     
     if(charts.trend) charts.trend.destroy();
@@ -994,11 +1150,11 @@ function renderCharts() {
 
 // ================= INIT =================
 window.onload = () => {
+    initMonthPicker();
     loadData();
     setDateHeader();
     updateAllUI();
     
-    // Register PWA Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
     }
