@@ -654,6 +654,7 @@ function showForm(type) {
     const title = document.getElementById('sheet-title');
     const form = document.getElementById('dynamic-form');
     
+    // RESET DEFAULT STATE
     form.reset();
     document.getElementById('edit-id').value = '';
     document.getElementById('btn-submit-form').textContent = 'Simpan';
@@ -674,6 +675,7 @@ function showForm(type) {
     
     const lblAmount = document.getElementById('label-amount');
     
+    // Set to Defaults
     fgCat.style.display = 'block';
     fgWalTo.style.display = 'none';
     fgPerson.style.display = 'none';
@@ -812,18 +814,20 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
                 d.date = date;
             }
         } else {
-            data.debts.unshift({ id: Date.now(), type: cat, person, amount, originalAmount: amount, note, date, paid: false });
+            const debtId = Date.now();
+            data.debts.unshift({ id: debtId, type: cat, person, amount, originalAmount: amount, note, date, paid: false });
             const w = data.wallets.find(w => w.id === walletId);
             if(w && cat === 'piutang') w.balance -= amount;
             if(w && cat === 'hutang') w.balance += amount;
 
             data.transactions.unshift({
-                id: Date.now(),
+                id: Date.now() + 1, // Hindari id kembar
                 type: cat === 'piutang' ? 'debt_out' : 'debt_in',
                 date,
                 category: cat === 'piutang' ? 'Beri Pinjaman' : 'Terima Pinjaman',
                 walletId, amount,
-                note: person + (note ? ` (${note})` : '')
+                note: person + (note ? ` (${note})` : ''),
+                debtId: debtId // Hubungkan transaksi ke hutang
             });
         }
     }
@@ -842,6 +846,7 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
             if(w && d.type === 'hutang') w.balance -= amount; 
             if(w && d.type === 'piutang') w.balance += amount; 
 
+            // Simpan transaksi pembayaran yang terikat ke debtId
             data.transactions.unshift({ 
                 id: Date.now(), 
                 type: d.type === 'hutang' ? 'debt_out' : 'debt_in',
@@ -849,7 +854,8 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
                 category: d.type === 'hutang' ? 'Bayar Hutang' : 'Terima Piutang', 
                 walletId, 
                 amount, 
-                note: d.person + (note ? ` (${note})` : '')
+                note: d.person + (note ? ` (${note})` : ''),
+                debtId: d.id // Hubungan ID
             });
         }
     }
@@ -868,7 +874,7 @@ function editTransaction(id) {
     if(!t) return;
     
     if(t.type === 'debt_in' || t.type === 'debt_out') {
-        alert('Transaksi ini adalah pembayaran hutang/piutang. Harap hapus transaksi ini lalu catat ulang pembayaran melalui menu Hutang jika ada kesalahan.');
+        alert('Transaksi ini adalah hutang/piutang. Harap hapus transaksi ini untuk membatalkannya, lalu catat ulang melalui menu Hutang.');
         return;
     }
 
@@ -905,16 +911,7 @@ function editDebt(id) {
 }
 
 function undoDebt(id) {
-    if(!confirm('Kembalikan tagihan ini ke daftar belum lunas?')) return;
-    const d = data.debts.find(x => x.id === id);
-    if(d) {
-        d.paid = false;
-        if (d.amount === 0 && d.originalAmount) {
-            d.amount = d.originalAmount;
-        }
-        saveData();
-        updateAllUI();
-    }
+    alert("Untuk membatalkan dan mengembalikan uang ke dompet secara akurat, silakan Hapus (🗑️) transaksi pembayarannya ('Terima Piutang' atau 'Bayar Hutang') di menu Beranda atau Riwayat. Saldo tagihan akan otomatis kembali seperti semula.");
 }
 
 function deleteItem(type, id) {
@@ -922,16 +919,38 @@ function deleteItem(type, id) {
     if(type === 'trans') {
         const t = data.transactions.find(x => x.id === id);
         const w = data.wallets.find(w => w.id === t.walletId);
+        
+        // 1. Tarik/Kembalikan saldo dompet
         if(w) {
             if (t.type === 'expense' || t.type === 'debt_out') w.balance += t.amount;
             else if (t.type === 'income' || t.type === 'debt_in') w.balance -= t.amount;
         }
+        
+        // 2. Jika ini transaksi yang berkaitan dengan hutang, batalkan status lunasnya dan kembalikan sisa hutangnya
+        if (t.debtId) {
+            const d = data.debts.find(x => x.id === t.debtId);
+            if (d) {
+                // Khusus untuk transaksi pembuatan hutang/piutang awal, hapus tagihannya sekalian
+                if (t.category === 'Beri Pinjaman' || t.category === 'Terima Pinjaman') {
+                    data.debts = data.debts.filter(x => x.id !== t.debtId);
+                } else {
+                    // Ini transaksi cicilan/pelunasan, kembalikan nominal sisa tagihannya
+                    d.amount += t.amount;
+                    if (d.amount > 0) d.paid = false;
+                }
+            }
+        }
+        
+        // 3. Buang dari riwayat
         data.transactions = data.transactions.filter(x => x.id !== id);
+        
     } else if (type === 'debt') {
+        // Hapus paksa tagihan aktif (opsional)
         data.debts = data.debts.filter(x => x.id !== id);
     } else if (type === 'wallet') {
         data.wallets = data.wallets.filter(x => x.id !== id);
     }
+    
     saveData(); updateAllUI();
 }
 
@@ -1077,10 +1096,10 @@ function updateAllUI() {
             </div>
             <div style="text-align:right;">
                 <div class="item-amount ${isHutang ? 'out' : 'in'}">${formatRp(d.amount)}</div>
-                <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px;">
-                    <button class="btn-primary" style="padding: 4px 10px; font-size: 13px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editDebt(${d.id})">✎</button>
-                    <button class="btn-success" style="padding: 4px 10px; font-size: 13px; margin: 0;" onclick="openPayDebt(${d.id}, ${d.amount})">✅</button>
-                    <button class="btn-danger" style="padding: 4px 10px; font-size: 13px; margin: 0;" onclick="deleteItem('debt', ${d.id})">🗑️</button>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                    <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editDebt(${d.id})">✎</button>
+                    <button class="btn-success" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="openPayDebt(${d.id}, ${d.amount})">✅</button>
+                    <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('debt', ${d.id})">🗑️</button>
                 </div>
             </div>
         </div>`;
