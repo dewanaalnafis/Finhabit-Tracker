@@ -1067,10 +1067,10 @@ function updateAllUI() {
             </div>
             <div style="text-align:right;">
                 <div class="item-amount ${isHutang ? 'out' : 'in'}">${formatRp(d.amount)}</div>
-                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap;">
-                    <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editDebt(${d.id})">✎</button>
-                    <button class="btn-success" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="openPayDebt(${d.id}, ${d.amount})">✅</button>
-                    <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('debt', ${d.id})">🗑️</button>
+                <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px;">
+                    <button class="btn-primary" style="padding: 4px 10px; font-size: 13px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editDebt(${d.id})">✎</button>
+                    <button class="btn-success" style="padding: 4px 10px; font-size: 13px; margin: 0;" onclick="openPayDebt(${d.id}, ${d.amount})">✅</button>
+                    <button class="btn-danger" style="padding: 4px 10px; font-size: 13px; margin: 0;" onclick="deleteItem('debt', ${d.id})">🗑️</button>
                 </div>
             </div>
         </div>`;
