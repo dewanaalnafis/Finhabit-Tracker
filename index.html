@@ -520,6 +520,12 @@ function loadData() {
             });
         }
 
+        if(data.debts) {
+            data.debts.forEach(d => {
+                if (d.originalAmount === undefined) d.originalAmount = d.amount;
+            });
+        }
+
         if(data.transactions) {
             data.transactions.forEach(t => {
                 if (t.category === 'Terima Piutang' && t.type === 'income') t.type = 'debt_in';
@@ -801,11 +807,12 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
                 d.type = cat;
                 d.person = person;
                 d.amount = amount; 
+                if (d.originalAmount === undefined) d.originalAmount = amount;
                 d.note = note;
                 d.date = date;
             }
         } else {
-            data.debts.unshift({ id: Date.now(), type: cat, person, amount, note, date, paid: false });
+            data.debts.unshift({ id: Date.now(), type: cat, person, amount, originalAmount: amount, note, date, paid: false });
             const w = data.wallets.find(w => w.id === walletId);
             if(w && cat === 'piutang') w.balance -= amount;
             if(w && cat === 'hutang') w.balance += amount;
@@ -902,6 +909,9 @@ function undoDebt(id) {
     const d = data.debts.find(x => x.id === id);
     if(d) {
         d.paid = false;
+        if (d.amount === 0 && d.originalAmount) {
+            d.amount = d.originalAmount;
+        }
         saveData();
         updateAllUI();
     }
@@ -1080,6 +1090,8 @@ function updateAllUI() {
     const pList = document.getElementById('ui-debt-paid-list');
     if(paidDebts.length===0) pList.innerHTML = `<div class="empty-state"><p style="font-size:13px;">Belum ada riwayat lunas</p></div>`;
     else pList.innerHTML = `<div class="list-group" style="opacity: 0.8;">` + paidDebts.map(d => {
+        const isHutang = d.type === 'hutang';
+        const displayAmount = d.originalAmount !== undefined ? d.originalAmount : d.amount;
         return `
         <div class="list-item">
             <div class="item-icon" style="background:var(--border); color:var(--text-muted);">✅</div>
@@ -1088,6 +1100,7 @@ function updateAllUI() {
                 <div class="item-subtitle">${d.date}</div>
             </div>
             <div style="text-align:right;">
+                <div class="item-amount ${isHutang ? 'out' : 'in'}">${formatRp(displayAmount)}</div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
                     <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--warning); color: #000;" onclick="undoDebt(${d.id})">↩</button>
                     <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('debt', ${d.id})">🗑️</button>
