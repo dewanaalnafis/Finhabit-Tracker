@@ -523,9 +523,17 @@ function loadData() {
         if(data.debts) {
             data.debts.forEach(d => {
                 if (d.originalAmount === undefined) d.originalAmount = d.amount;
+                // Memperbaiki dompet asal yang kosong
                 if (d.walletId === undefined) {
-                    const t = data.transactions.find(tx => tx.debtId === d.id);
-                    if (t) d.walletId = t.walletId;
+                    let t = data.transactions.find(tx => tx.debtId === d.id);
+                    if (!t) {
+                        t = data.transactions.find(tx => Math.abs(tx.amount) === d.originalAmount && tx.date === d.date);
+                    }
+                    if (t) {
+                        d.walletId = t.walletId;
+                    } else if (data.wallets.length > 0) {
+                        d.walletId = data.wallets[0].id;
+                    }
                 }
             });
         }
@@ -658,6 +666,7 @@ function showForm(type) {
     const title = document.getElementById('sheet-title');
     const form = document.getElementById('dynamic-form');
     
+    // RESET DEFAULT STATE
     form.reset();
     document.getElementById('edit-id').value = '';
     document.getElementById('btn-submit-form').textContent = 'Simpan';
@@ -678,6 +687,7 @@ function showForm(type) {
     
     const lblAmount = document.getElementById('label-amount');
     
+    // Set to Defaults
     fgCat.style.display = 'block';
     fgWalTo.style.display = 'none';
     fgPerson.style.display = 'none';
@@ -1161,13 +1171,10 @@ function updateAllUI() {
         const ar = data.debts.filter(d => !d.paid && d.type === 'piutang' && d.walletId === w.id).reduce((sum, d) => sum + d.amount, 0);
         const ap = data.debts.filter(d => !d.paid && d.type === 'hutang' && d.walletId === w.id).reduce((sum, d) => sum + d.amount, 0);
         
-        let arApHtml = '';
-        if (ar > 0 || ap > 0) {
-            arApHtml = `<div style="font-size: 11px; margin-top: 4px; display: flex; gap: 8px;">`;
-            if (ar > 0) arApHtml += `<span style="color: var(--success); font-weight: 500;">+ Piutang: ${formatRp(ar)}</span>`;
-            if (ap > 0) arApHtml += `<span style="color: var(--danger); font-weight: 500;">- Hutang: ${formatRp(ap)}</span>`;
-            arApHtml += `</div>`;
-        }
+        let arApHtml = `<div style="font-size: 11px; margin-top: 4px; display: flex; gap: 12px;">
+            <span style="color: var(--success); font-weight: 500;">Piutang: ${formatRp(ar)}</span>
+            <span style="color: var(--danger); font-weight: 500;">Hutang: ${formatRp(ap)}</span>
+        </div>`;
 
         return `
         <div class="list-item">
