@@ -523,6 +523,10 @@ function loadData() {
         if(data.debts) {
             data.debts.forEach(d => {
                 if (d.originalAmount === undefined) d.originalAmount = d.amount;
+                if (d.walletId === undefined) {
+                    const t = data.transactions.find(tx => tx.debtId === d.id);
+                    if (t) d.walletId = t.walletId;
+                }
             });
         }
 
@@ -654,7 +658,6 @@ function showForm(type) {
     const title = document.getElementById('sheet-title');
     const form = document.getElementById('dynamic-form');
     
-    // RESET DEFAULT STATE
     form.reset();
     document.getElementById('edit-id').value = '';
     document.getElementById('btn-submit-form').textContent = 'Simpan';
@@ -675,7 +678,6 @@ function showForm(type) {
     
     const lblAmount = document.getElementById('label-amount');
     
-    // Set to Defaults
     fgCat.style.display = 'block';
     fgWalTo.style.display = 'none';
     fgPerson.style.display = 'none';
@@ -758,6 +760,21 @@ function openEditWallet(id) {
     document.getElementById('btn-submit-form').textContent = 'Simpan Saldo Baru';
 }
 
+function editTransfer(id) {
+    const tf = data.transfers.find(x => x.id === id);
+    if(!tf) return;
+    openBottomSheet();
+    showForm('tf');
+    document.getElementById('edit-id').value = tf.id;
+    document.getElementById('input-date').value = tf.date;
+    document.getElementById('input-wallet').value = tf.fromId;
+    document.getElementById('input-wallet-to').value = tf.toId;
+    document.getElementById('input-amount').value = tf.amount;
+    document.getElementById('input-note').value = tf.note || '';
+    document.getElementById('sheet-title').textContent = 'Edit Transfer Saldo';
+    document.getElementById('btn-submit-form').textContent = 'Update Data';
+}
+
 // ================= CORE ACTIONS =================
 document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -795,11 +812,36 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
     else if (type === 'tf') {
         const toId = parseInt(document.getElementById('input-wallet-to').value);
         if(walletId === toId) return alert('Pilih dompet tujuan yang berbeda!');
-        data.transfers.unshift({ id: Date.now(), date, fromId: walletId, toId, amount, note });
-        const wFrom = data.wallets.find(w => w.id === walletId);
-        const wTo = data.wallets.find(w => w.id === toId);
-        if(wFrom) wFrom.balance -= amount;
-        if(wTo) wTo.balance += amount;
+        
+        if (editId) {
+            const tf = data.transfers.find(x => x.id === parseInt(editId));
+            if (tf) {
+                // Revert saldo sebelumnya
+                const oldWFrom = data.wallets.find(w => w.id === tf.fromId);
+                const oldWTo = data.wallets.find(w => w.id === tf.toId);
+                if(oldWFrom) oldWFrom.balance += tf.amount;
+                if(oldWTo) oldWTo.balance -= tf.amount;
+
+                // Update data
+                tf.date = date;
+                tf.fromId = walletId;
+                tf.toId = toId;
+                tf.amount = amount;
+                tf.note = note;
+
+                // Terapkan saldo baru
+                const newWFrom = data.wallets.find(w => w.id === walletId);
+                const newWTo = data.wallets.find(w => w.id === toId);
+                if(newWFrom) newWFrom.balance -= amount;
+                if(newWTo) newWTo.balance += amount;
+            }
+        } else {
+            data.transfers.unshift({ id: Date.now(), date, fromId: walletId, toId, amount, note });
+            const wFrom = data.wallets.find(w => w.id === walletId);
+            const wTo = data.wallets.find(w => w.id === toId);
+            if(wFrom) wFrom.balance -= amount;
+            if(wTo) wTo.balance += amount;
+        }
     }
     else if (type === 'debt') {
         const person = document.getElementById('input-person').value;
@@ -815,19 +857,19 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
             }
         } else {
             const debtId = Date.now();
-            data.debts.unshift({ id: debtId, type: cat, person, amount, originalAmount: amount, note, date, paid: false });
+            data.debts.unshift({ id: debtId, type: cat, person, amount, originalAmount: amount, note, date, paid: false, walletId: walletId });
             const w = data.wallets.find(w => w.id === walletId);
             if(w && cat === 'piutang') w.balance -= amount;
             if(w && cat === 'hutang') w.balance += amount;
 
             data.transactions.unshift({
-                id: Date.now() + 1, // Hindari id kembar
+                id: Date.now() + 1, 
                 type: cat === 'piutang' ? 'debt_out' : 'debt_in',
                 date,
                 category: cat === 'piutang' ? 'Beri Pinjaman' : 'Terima Pinjaman',
                 walletId, amount,
                 note: person + (note ? ` (${note})` : ''),
-                debtId: debtId // Hubungkan transaksi ke hutang
+                debtId: debtId
             });
         }
     }
@@ -846,7 +888,6 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
             if(w && d.type === 'hutang') w.balance -= amount; 
             if(w && d.type === 'piutang') w.balance += amount; 
 
-            // Simpan transaksi pembayaran yang terikat ke debtId
             data.transactions.unshift({ 
                 id: Date.now(), 
                 type: d.type === 'hutang' ? 'debt_out' : 'debt_in',
@@ -855,7 +896,7 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
                 walletId, 
                 amount, 
                 note: d.person + (note ? ` (${note})` : ''),
-                debtId: d.id // Hubungan ID
+                debtId: d.id 
             });
         }
     }
@@ -916,36 +957,41 @@ function undoDebt(id) {
 
 function deleteItem(type, id) {
     if(!confirm('Hapus data ini?')) return;
+    
     if(type === 'trans') {
         const t = data.transactions.find(x => x.id === id);
         const w = data.wallets.find(w => w.id === t.walletId);
         
-        // 1. Tarik/Kembalikan saldo dompet
         if(w) {
             if (t.type === 'expense' || t.type === 'debt_out') w.balance += t.amount;
             else if (t.type === 'income' || t.type === 'debt_in') w.balance -= t.amount;
         }
         
-        // 2. Jika ini transaksi yang berkaitan dengan hutang, batalkan status lunasnya dan kembalikan sisa hutangnya
         if (t.debtId) {
             const d = data.debts.find(x => x.id === t.debtId);
             if (d) {
-                // Khusus untuk transaksi pembuatan hutang/piutang awal, hapus tagihannya sekalian
                 if (t.category === 'Beri Pinjaman' || t.category === 'Terima Pinjaman') {
                     data.debts = data.debts.filter(x => x.id !== t.debtId);
                 } else {
-                    // Ini transaksi cicilan/pelunasan, kembalikan nominal sisa tagihannya
                     d.amount += t.amount;
                     if (d.amount > 0) d.paid = false;
                 }
             }
         }
         
-        // 3. Buang dari riwayat
         data.transactions = data.transactions.filter(x => x.id !== id);
         
+    } else if (type === 'tf') {
+        const tf = data.transfers.find(x => x.id === id);
+        if (tf) {
+            const wFrom = data.wallets.find(w => w.id === tf.fromId);
+            const wTo = data.wallets.find(w => w.id === tf.toId);
+            if(wFrom) wFrom.balance += tf.amount;
+            if(wTo) wTo.balance -= tf.amount;
+        }
+        data.transfers = data.transfers.filter(x => x.id !== id);
+
     } else if (type === 'debt') {
-        // Hapus paksa tagihan aktif (opsional)
         data.debts = data.debts.filter(x => x.id !== id);
     } else if (type === 'wallet') {
         data.wallets = data.wallets.filter(x => x.id !== id);
@@ -1012,6 +1058,71 @@ function doHabit(qId, score) {
     saveData(); updateAllUI();
 }
 
+// ================= HTML TEMPLATE TRANSAKSI =================
+// Fungsi ini berguna agar HTML tidak ditulis berulang 2x di Beranda & Riwayat
+function getTransactionHTML(t) {
+    // Tampilan khusus Pindah Saldo (Transfer)
+    if (t.type === 'transfer') {
+        const wFrom = data.wallets.find(w => w.id === t.fromId);
+        const wTo = data.wallets.find(w => w.id === t.toId);
+        const fromName = wFrom ? wFrom.name : '?';
+        const toName = wTo ? wTo.name : '?';
+
+        return `
+        <div class="list-item">
+            <div class="item-icon transfer" style="background:var(--primary-light); color:var(--primary);">🔄</div>
+            <div class="item-details">
+                <div class="item-title">Transfer Saldo</div>
+                <div class="item-subtitle">
+                    ${t.date} • <b>Transfer</b> (💼 ${fromName} ➔ 💼 ${toName})
+                    ${t.note ? `<br><span style="opacity:0.8; margin-top:4px; display:inline-block;">📝 ${t.note}</span>` : ''}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div class="item-amount" style="color:var(--text-main);">${formatRp(t.amount)}</div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                    <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editTransfer(${t.id})">✎</button>
+                    <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('tf', ${t.id})">🗑️</button>
+                </div>
+            </div>
+        </div>`;
+    } 
+    // Tampilan standar untuk Pemasukan / Pengeluaran / Hutang
+    else {
+        const isInc = t.type === 'income' || t.type === 'debt_in';
+        const iconChar = (t.type === 'debt_in' || t.type === 'debt_out') ? '🤝' : (isInc ? '↓' : '↑');
+        
+        let typeName = '';
+        if(t.type === 'income') typeName = 'Pemasukan';
+        else if(t.type === 'expense') typeName = 'Pengeluaran';
+        else if(t.type === 'debt_in') typeName = 'Terima Cicilan/Piutang';
+        else if(t.type === 'debt_out') typeName = 'Bayar Tagihan/Hutang';
+
+        const w = data.wallets.find(w => w.id === t.walletId);
+        const walletName = w ? w.name : 'Dompet Dihapus';
+        
+        return `
+        <div class="list-item">
+            <div class="item-icon ${isInc ? 'in' : 'out'}">${iconChar}</div>
+            <div class="item-details">
+                <div class="item-title">${t.category}</div>
+                <div class="item-subtitle">
+                    ${t.date} • <b>${typeName}</b> (💼 ${walletName})
+                    ${t.note ? `<br><span style="opacity:0.8; margin-top:4px; display:inline-block;">📝 ${t.note}</span>` : ''}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                    <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editTransaction(${t.id})">✎</button>
+                    <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('trans', ${t.id})">🗑️</button>
+                </div>
+            </div>
+        </div>`;
+    }
+}
+
+
 // ================= RENDER UI =================
 function updateAllUI() {
     const totalBalance = data.wallets.reduce((s, w) => s + w.balance, 0);
@@ -1023,42 +1134,42 @@ function updateAllUI() {
     document.getElementById('ui-rekening-balance').textContent = formatRp(totalRekening);
 
     const now = new Date();
-    const monthTrans = data.transactions.filter(t => new Date(t.date).getMonth() === now.getMonth() && new Date(t.date).getFullYear() === now.getFullYear());
     
+    const monthTrans = data.transactions.filter(t => new Date(t.date).getMonth() === now.getMonth() && new Date(t.date).getFullYear() === now.getFullYear());
+    const monthTfs = data.transfers.filter(t => new Date(t.date).getMonth() === now.getMonth() && new Date(t.date).getFullYear() === now.getFullYear());
+
     const inc = monthTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp = monthTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     
     document.getElementById('ui-month-income').textContent = formatRp(inc);
     document.getElementById('ui-month-expense').textContent = formatRp(exp);
 
+    // Gabungkan transaksi dan transfer, lalu urutkan untuk tampilan "Beranda" (Transaksi Terakhir)
+    const combinedRecent = [...monthTrans, ...monthTfs.map(tf => ({...tf, type: 'transfer'}))]
+        .sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id)
+        .slice(0, 10); // Ambil 10 terbaru
+
     const rtList = document.getElementById('ui-recent-transactions');
-    if(data.transactions.length === 0) {
+    if(combinedRecent.length === 0) {
         rtList.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>Belum ada transaksi</p></div>`;
     } else {
-        rtList.innerHTML = data.transactions.slice(0, 10).map(t => {
-            const isInc = t.type === 'income' || t.type === 'debt_in';
-            const iconChar = (t.type === 'debt_in' || t.type === 'debt_out') ? '🤝' : (isInc ? '↓' : '↑');
-            
-            return `
-            <div class="list-item">
-                <div class="item-icon ${isInc ? 'in' : 'out'}">${iconChar}</div>
-                <div class="item-details">
-                    <div class="item-title">${t.category}</div>
-                    <div class="item-subtitle">${t.date} ${t.note ? '• '+t.note : ''}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
-                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
-                        <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editTransaction(${t.id})">✎</button>
-                        <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('trans', ${t.id})">🗑️</button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
+        rtList.innerHTML = combinedRecent.map(getTransactionHTML).join('');
     }
 
     const wList = document.getElementById('ui-wallet-list-detail');
-    wList.innerHTML = data.wallets.map(w => `
+    wList.innerHTML = data.wallets.map(w => {
+        const ar = data.debts.filter(d => !d.paid && d.type === 'piutang' && d.walletId === w.id).reduce((sum, d) => sum + d.amount, 0);
+        const ap = data.debts.filter(d => !d.paid && d.type === 'hutang' && d.walletId === w.id).reduce((sum, d) => sum + d.amount, 0);
+        
+        let arApHtml = '';
+        if (ar > 0 || ap > 0) {
+            arApHtml = `<div style="font-size: 11px; margin-top: 4px; display: flex; gap: 8px;">`;
+            if (ar > 0) arApHtml += `<span style="color: var(--success); font-weight: 500;">+ Piutang: ${formatRp(ar)}</span>`;
+            if (ap > 0) arApHtml += `<span style="color: var(--danger); font-weight: 500;">- Hutang: ${formatRp(ap)}</span>`;
+            arApHtml += `</div>`;
+        }
+
+        return `
         <div class="list-item">
             <div class="item-icon transfer" style="background:var(--bg); color:var(--text-main); font-size: 24px;">
                 ${w.type === 'tunai' ? '💵' : '💳'}
@@ -1066,6 +1177,7 @@ function updateAllUI() {
             <div class="item-details">
                 <div class="item-title">${w.name}</div>
                 <div class="item-subtitle">${w.type === 'tunai' ? 'Uang Tunai' : 'Rekening / e-Wallet'}</div>
+                ${arApHtml}
             </div>
             <div style="text-align:right;">
                 <div class="item-amount" style="color:var(--text-main); margin-bottom:4px;">${formatRp(w.balance)}</div>
@@ -1075,7 +1187,8 @@ function updateAllUI() {
                 </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     const activeDebts = data.debts.filter(d => !d.paid);
     const totHutang = activeDebts.filter(d => d.type === 'hutang').reduce((s,d)=>s+d.amount,0);
@@ -1188,6 +1301,7 @@ function renderHistoryTab() {
     if(!start || !end) return; 
     
     const filteredTrans = data.transactions.filter(t => t.date >= start && t.date <= end);
+    const filteredTfs = data.transfers.filter(t => t.date >= start && t.date <= end);
     
     const inc = filteredTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp = filteredTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -1195,30 +1309,14 @@ function renderHistoryTab() {
     document.getElementById('ui-history-income').textContent = formatRp(inc);
     document.getElementById('ui-history-expense').textContent = formatRp(exp);
     
+    const combinedHistory = [...filteredTrans, ...filteredTfs.map(tf => ({...tf, type: 'transfer'}))]
+        .sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
     const listEl = document.getElementById('ui-history-list');
-    if(filteredTrans.length === 0) {
-        listEl.innerHTML = `<div class="empty-state"><p>Tidak ada transaksi di rentang ini</p></div>`;
+    if(combinedHistory.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><p>Tidak ada riwayat di rentang ini</p></div>`;
     } else {
-        listEl.innerHTML = filteredTrans.map(t => {
-            const isInc = t.type === 'income' || t.type === 'debt_in';
-            const iconChar = (t.type === 'debt_in' || t.type === 'debt_out') ? '🤝' : (isInc ? '↓' : '↑');
-            
-            return `
-            <div class="list-item">
-                <div class="item-icon ${isInc ? 'in' : 'out'}">${iconChar}</div>
-                <div class="item-details">
-                    <div class="item-title">${t.category}</div>
-                    <div class="item-subtitle">${t.date} ${t.note ? '• '+t.note : ''}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div class="item-amount ${isInc ? 'in' : 'out'}">${isInc ? '+' : '-'}${formatRp(t.amount)}</div>
-                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
-                        <button class="btn-primary" style="padding: 4px 12px; font-size: 14px; margin: 0; background: var(--border); color: var(--text-main);" onclick="editTransaction(${t.id})">✎</button>
-                        <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0;" onclick="deleteItem('trans', ${t.id})">🗑️</button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
+        listEl.innerHTML = combinedHistory.map(getTransactionHTML).join('');
     }
 }
 
@@ -1280,10 +1378,8 @@ function renderCharts() {
         totalExp += t.amount;
     });
 
-    // Rata-rata Total
     document.getElementById('ui-avg-total').textContent = formatRp(totalExp / daysInPeriod);
 
-    // Render Pareto Chart (Diagram Batang)
     const sortedCats = Object.keys(expCat).sort((a,b) => expCat[b] - expCat[a]);
     const paretoLabels = [];
     const paretoData = [];
@@ -1321,7 +1417,6 @@ function renderCharts() {
         }
     });
 
-    // Checkbox Kategori Analisis (Pertahankan status jika sudah dipilih)
     const container = document.getElementById('analytics-cat-checkboxes');
     const existingCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
     
@@ -1334,7 +1429,6 @@ function renderCharts() {
     
     calculateCategoryAvg();
 
-    // Trend 6 Bulan Chart
     const trendLabels = [];
     const incData = [];
     const expData = [];
