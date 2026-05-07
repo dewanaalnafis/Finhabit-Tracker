@@ -858,12 +858,40 @@ document.getElementById('dynamic-form').addEventListener('submit', function(e) {
         if (editId) {
             const d = data.debts.find(x => x.id === parseInt(editId));
             if (d) {
+                // Revert efek saldo pada dompet lama (menggunakan sisa tagihan d.amount)
+                const oldW = data.wallets.find(w => w.id === d.walletId);
+                if (oldW) {
+                    if (d.type === 'piutang') oldW.balance += d.amount;
+                    if (d.type === 'hutang') oldW.balance -= d.amount;
+                }
+
                 d.type = cat;
                 d.person = person;
                 d.amount = amount; 
-                if (d.originalAmount === undefined) d.originalAmount = amount;
+                // Jika nominal diubah pengguna secara manual, maka original amount ikut disesuaikan
+                d.originalAmount = amount; 
                 d.note = note;
                 d.date = date;
+                d.walletId = walletId;
+
+                // Terapkan efek saldo pada dompet baru (atau dompet yang sama)
+                const newW = data.wallets.find(w => w.id === walletId);
+                if (newW) {
+                    if (cat === 'piutang') newW.balance -= amount;
+                    if (cat === 'hutang') newW.balance += amount;
+                }
+
+                // Update histori transaksi awal penciptaan hutang/piutang (jika ada)
+                const tx = data.transactions.find(t => t.debtId === d.id && (t.category === 'Beri Pinjaman' || t.category === 'Terima Pinjaman'));
+                if (tx) {
+                    tx.type = cat === 'piutang' ? 'debt_out' : 'debt_in';
+                    tx.category = cat === 'piutang' ? 'Beri Pinjaman' : 'Terima Pinjaman';
+                    tx.walletId = walletId;
+                    tx.amount = amount;
+                    tx.note = person + (note ? ` (${note})` : '');
+                    tx.date = date;
+                }
+
             }
         } else {
             const debtId = Date.now();
@@ -954,11 +982,13 @@ function editDebt(id) {
     document.getElementById('input-amount').value = d.amount;
     document.getElementById('input-note').value = d.note || '';
     
-    document.getElementById('fg-wallet').style.display = 'none';
-    document.getElementById('input-wallet').required = false;
+    // Tampilkan Pilihan Dompet karena bisa Pindah Saldo untuk Hutang
+    document.getElementById('fg-wallet').style.display = 'block';
+    document.getElementById('input-wallet').required = true;
+    document.getElementById('input-wallet').value = d.walletId || (data.wallets.length > 0 ? data.wallets[0].id : '');
 
-    document.getElementById('sheet-title').textContent = 'Edit Sisa Tagihan';
-    document.getElementById('btn-submit-form').textContent = 'Simpan Sisa Tagihan';
+    document.getElementById('sheet-title').textContent = 'Edit Tagihan Aktif';
+    document.getElementById('btn-submit-form').textContent = 'Simpan Perubahan';
 }
 
 function undoDebt(id) {
