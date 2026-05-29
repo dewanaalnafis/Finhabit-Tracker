@@ -234,12 +234,34 @@
         <!-- Tab: Riwayat Kalender Rentang Tanggal -->
         <div id="tab-riwayat" class="tab-content">
             <h2 class="section-header">Pencarian Riwayat</h2>
-            <div class="form-group" style="background:var(--surface); padding:16px; border-radius:16px; margin-bottom:16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+            <div class="form-group" style="background:var(--surface); padding:16px; border-radius:16px; margin-bottom:12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
                 <label>Rentang Tanggal</label>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="date" id="filter-start" class="form-control" onchange="renderHistoryTab()" style="padding:10px 12px; font-size:14px;">
                     <span style="font-weight:bold; color:var(--text-muted);">-</span>
                     <input type="date" id="filter-end" class="form-control" onchange="renderHistoryTab()" style="padding:10px 12px; font-size:14px;">
+                </div>
+            </div>
+
+            <!-- Filter Kategori Riwayat -->
+            <div style="background:var(--surface); padding:14px 16px; border-radius:16px; margin-bottom:12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; cursor:pointer;" onclick="toggleHistoryFilter()">
+                    <span style="font-size:13px; font-weight:700; color:var(--text-main);">🔍 Filter Kategori</span>
+                    <span id="history-filter-toggle-icon" style="font-size:12px; color:var(--text-muted);">▼ Tampilkan</span>
+                </div>
+                <div id="history-filter-panel" style="display:none;">
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:12px; font-weight:700; color:var(--success); margin-bottom:6px;">✅ Pemasukan</div>
+                        <div id="history-filter-income" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <div style="font-size:12px; font-weight:700; color:var(--danger); margin-bottom:6px;">💸 Pengeluaran</div>
+                        <div id="history-filter-expense" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:12px;">
+                        <button onclick="selectAllHistoryFilter(true)" style="flex:1; padding:8px; font-size:12px; font-weight:700; background:var(--primary-light); color:var(--primary); border:1px solid var(--primary); border-radius:10px; cursor:pointer;">Pilih Semua</button>
+                        <button onclick="selectAllHistoryFilter(false)" style="flex:1; padding:8px; font-size:12px; font-weight:700; background:var(--bg); color:var(--text-muted); border:1px solid var(--border); border-radius:10px; cursor:pointer;">Hapus Semua</button>
+                    </div>
                 </div>
             </div>
             
@@ -289,19 +311,77 @@
                 <input type="month" id="analytic-month" class="form-control" onchange="renderCharts()">
             </div>
 
+            <!-- Ringkasan Bulanan -->
+            <div class="stats-grid" style="margin-bottom: 12px;">
+                <div class="stat-box income" style="padding:14px;">
+                    <div class="stat-label">Total Pemasukan</div>
+                    <div class="stat-val" id="ui-analytics-total-income" style="font-size:16px; color:var(--success);">Rp 0</div>
+                </div>
+                <div class="stat-box expense" style="padding:14px;">
+                    <div class="stat-label">Total Pengeluaran</div>
+                    <div class="stat-val" id="ui-analytics-total-expense" style="font-size:16px;">Rp 0</div>
+                </div>
+            </div>
             <div class="stats-grid" style="margin-bottom: 16px;">
-                <div class="stat-box expense" style="grid-column: span 2; padding:16px;">
-                    <div class="stat-label">Rata-rata Pengeluaran / Hari (Bulan Terpilih)</div>
-                    <div class="stat-val" id="ui-avg-total" style="font-size:20px;">Rp 0</div>
+                <div class="stat-box expense" style="padding:14px;">
+                    <div class="stat-label">Rata-rata / Hari</div>
+                    <div class="stat-val" id="ui-avg-total" style="font-size:16px;">Rp 0</div>
+                </div>
+                <div class="stat-box" style="padding:14px; border-left: 4px solid var(--primary);">
+                    <div class="stat-label">Arus Kas Bersih</div>
+                    <div class="stat-val" id="ui-analytics-net" style="font-size:16px; color:var(--primary);">Rp 0</div>
                 </div>
             </div>
 
-            <div class="list-group" style="padding: 16px;">
-                <h3 style="font-size:14px; margin-bottom:12px; color:var(--text-main);">Rata-rata / Hari (Kategori Pilihan)</h3>
-                <div id="analytics-cat-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
-                    <!-- Checkboxes akan dirender di sini -->
+            <!-- Analisis Kategori Checkbox -->
+            <div class="list-group" style="padding: 16px; margin-bottom:16px;">
+                <h3 style="font-size:14px; margin-bottom:12px; color:var(--text-main); font-weight:700;">📊 Analisis Kategori Pengeluaran</h3>
+                <div id="analytics-cat-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div style="background:var(--bg); border-radius:12px; padding:12px;">
+                        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">TOTAL (Kategori Pilihan)</div>
+                        <div class="stat-val" id="ui-sum-selected" style="color:var(--danger); font-size:17px;">Rp 0</div>
+                    </div>
+                    <div style="background:var(--bg); border-radius:12px; padding:12px;">
+                        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">RATA-RATA / HARI</div>
+                        <div class="stat-val" id="ui-avg-selected" style="color:var(--danger); font-size:17px;">Rp 0</div>
+                    </div>
                 </div>
-                <div class="stat-val" id="ui-avg-selected" style="color:var(--danger); font-size:18px;">Rp 0</div>
+            </div>
+
+            <!-- Laporan Arus Kas -->
+            <div style="background:var(--surface); border-radius:20px; padding:16px; margin-bottom:16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+                <h3 style="font-size:15px; font-weight:700; color:var(--text-main); margin-bottom:14px;">💧 Laporan Arus Kas</h3>
+                <!-- Arus Masuk -->
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:12px; font-weight:700; color:var(--success); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>📥 Arus Masuk</span>
+                        <span id="cashflow-total-in">Rp 0</span>
+                    </div>
+                    <div id="cashflow-income-rows"></div>
+                </div>
+                <div style="border-top:1px dashed var(--border); padding-top:14px; margin-bottom:14px;">
+                    <div style="font-size:12px; font-weight:700; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>📤 Arus Keluar</span>
+                        <span id="cashflow-total-out">Rp 0</span>
+                    </div>
+                    <div id="cashflow-expense-rows"></div>
+                </div>
+                <!-- Net -->
+                <div style="border-top:2px solid var(--border); padding-top:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:14px; font-weight:700; color:var(--text-main);">💰 Arus Kas Bersih</span>
+                        <span id="cashflow-net" style="font-size:18px; font-weight:800;">Rp 0</span>
+                    </div>
+                    <div id="cashflow-bar-container" style="margin-top:10px; height:8px; background:var(--bg); border-radius:4px; overflow:hidden;">
+                        <div id="cashflow-bar-fill" style="height:100%; width:50%; background:var(--success); border-radius:4px; transition:width 0.5s;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                        <span style="font-size:10px; color:var(--success);">Masuk</span>
+                        <span id="cashflow-ratio-label" style="font-size:10px; color:var(--text-muted); text-align:center;">50% digunakan</span>
+                        <span style="font-size:10px; color:var(--danger);">Keluar</span>
+                    </div>
+                </div>
             </div>
 
             <div class="chart-wrapper">
@@ -1308,6 +1388,7 @@ function updateAllUI() {
     }
 
     renderCategoryList();
+    buildHistoryFilterCheckboxes();
     renderHistoryTab(); 
 }
 
@@ -1331,13 +1412,65 @@ function renderCategoryList() {
     `).join('');
 }
 
+// ================= HISTORY FILTER =================
+let historyFilterVisible = false;
+
+function toggleHistoryFilter() {
+    historyFilterVisible = !historyFilterVisible;
+    document.getElementById('history-filter-panel').style.display = historyFilterVisible ? 'block' : 'none';
+    document.getElementById('history-filter-toggle-icon').textContent = historyFilterVisible ? '▲ Sembunyikan' : '▼ Tampilkan';
+}
+
+function buildHistoryFilterCheckboxes() {
+    const incContainer = document.getElementById('history-filter-income');
+    const expContainer = document.getElementById('history-filter-expense');
+    if (!incContainer || !expContainer) return;
+
+    const existingInc = Array.from(incContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+    const existingExp = Array.from(expContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+
+    const allInc = data.categories.income;
+    const allExp = data.categories.expense;
+
+    incContainer.innerHTML = allInc.map(cat => {
+        const isChecked = existingInc.length === 0 ? 'checked' : (existingInc.includes(cat) ? 'checked' : '');
+        return `<label class="cat-checkbox-wrapper" style="border-color: var(--success);">
+            <input type="checkbox" value="${cat}" ${isChecked} onchange="renderHistoryTab()" style="margin:0; width:auto;"> ${cat}
+        </label>`;
+    }).join('');
+
+    expContainer.innerHTML = allExp.map(cat => {
+        const isChecked = existingExp.length === 0 ? 'checked' : (existingExp.includes(cat) ? 'checked' : '');
+        return `<label class="cat-checkbox-wrapper">
+            <input type="checkbox" value="${cat}" ${isChecked} onchange="renderHistoryTab()" style="margin:0; width:auto;"> ${cat}
+        </label>`;
+    }).join('');
+}
+
+function selectAllHistoryFilter(checked) {
+    document.querySelectorAll('#history-filter-income input, #history-filter-expense input').forEach(cb => cb.checked = checked);
+    renderHistoryTab();
+}
+
 // Render Tab Riwayat (Kalender)
 function renderHistoryTab() {
     const start = document.getElementById('filter-start').value;
     const end = document.getElementById('filter-end').value;
-    if(!start || !end) return; 
-    
-    const filteredTrans = data.transactions.filter(t => t.date >= start && t.date <= end);
+    if(!start || !end) return;
+
+    // Rebuild filter checkboxes jika belum ada
+    const incContainer = document.getElementById('history-filter-income');
+    if (incContainer && incContainer.innerHTML === '') buildHistoryFilterCheckboxes();
+
+    const selectedInc = Array.from(document.querySelectorAll('#history-filter-income input:checked')).map(cb => cb.value);
+    const selectedExp = Array.from(document.querySelectorAll('#history-filter-expense input:checked')).map(cb => cb.value);
+
+    const filteredTrans = data.transactions.filter(t => {
+        if (t.date < start || t.date > end) return false;
+        if (t.type === 'income') return selectedInc.length === 0 || selectedInc.includes(t.category);
+        if (t.type === 'expense') return selectedExp.length === 0 || selectedExp.includes(t.category);
+        return true; // debt_in, debt_out tetap tampil
+    });
     const filteredTfs = data.transfers.filter(t => t.date >= start && t.date <= end);
     
     const inc = filteredTrans.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -1381,7 +1514,10 @@ function calculateCategoryAvg() {
     const totalSelectedExp = monthTrans.reduce((sum, t) => sum + t.amount, 0);
     const avgSelected = totalSelectedExp / daysInPeriod;
 
-    document.getElementById('ui-avg-selected').textContent = formatRp(avgSelected);
+    const sumEl = document.getElementById('ui-sum-selected');
+    const avgEl = document.getElementById('ui-avg-selected');
+    if (sumEl) sumEl.textContent = formatRp(totalSelectedExp);
+    if (avgEl) avgEl.textContent = formatRp(avgSelected);
 }
 
 // ================= CHARTS =================
@@ -1407,16 +1543,118 @@ function renderCharts() {
     }
 
     const monthTrans = data.transactions.filter(t => t.date.startsWith(monthVal) && t.type === 'expense');
+    const monthIncTrans = data.transactions.filter(t => t.date.startsWith(monthVal) && t.type === 'income');
+
     let totalExp = 0;
+    let totalInc = 0;
     const expCat = {};
+    const incCat = {};
     
     monthTrans.forEach(t => {
         expCat[t.category] = (expCat[t.category]||0) + t.amount;
         totalExp += t.amount;
     });
+    monthIncTrans.forEach(t => {
+        incCat[t.category] = (incCat[t.category]||0) + t.amount;
+        totalInc += t.amount;
+    });
+
+    const netCash = totalInc - totalExp;
+    
+    // Update summary stats
+    const totalIncEl = document.getElementById('ui-analytics-total-income');
+    const totalExpEl = document.getElementById('ui-analytics-total-expense');
+    const netEl = document.getElementById('ui-analytics-net');
+    if(totalIncEl) totalIncEl.textContent = formatRp(totalInc);
+    if(totalExpEl) totalExpEl.textContent = formatRp(totalExp);
+    if(netEl) {
+        netEl.textContent = formatRp(Math.abs(netCash));
+        netEl.style.color = netCash >= 0 ? 'var(--success)' : 'var(--danger)';
+        netEl.textContent = (netCash >= 0 ? '+' : '-') + 'Rp ' + Math.abs(parseInt(netCash)).toLocaleString('id-ID');
+    }
 
     document.getElementById('ui-avg-total').textContent = formatRp(totalExp / daysInPeriod);
 
+    // === RENDER LAPORAN ARUS KAS ===
+    // Income rows
+    const incomeRowsEl = document.getElementById('cashflow-income-rows');
+    const expenseRowsEl = document.getElementById('cashflow-expense-rows');
+    const cashflowNetEl = document.getElementById('cashflow-net');
+    const cfTotalInEl = document.getElementById('cashflow-total-in');
+    const cfTotalOutEl = document.getElementById('cashflow-total-out');
+
+    if(incomeRowsEl) {
+        const sortedInc = Object.keys(incCat).sort((a,b) => incCat[b] - incCat[a]);
+        incomeRowsEl.innerHTML = sortedInc.length > 0 ? sortedInc.map(cat => {
+            const pct = totalInc > 0 ? ((incCat[cat]/totalInc)*100).toFixed(0) : 0;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--bg);">
+                <div style="flex:1;">
+                    <span style="font-size:13px; color:var(--text-main); font-weight:500;">${cat}</span>
+                    <div style="height:4px; background:var(--bg); border-radius:2px; margin-top:4px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:var(--success); border-radius:2px;"></div>
+                    </div>
+                </div>
+                <div style="text-align:right; margin-left:12px; min-width:90px;">
+                    <span style="font-size:13px; font-weight:700; color:var(--success);">${formatRp(incCat[cat])}</span>
+                    <div style="font-size:10px; color:var(--text-muted);">${pct}%</div>
+                </div>
+            </div>`;
+        }).join('') : `<div style="font-size:12px; color:var(--text-muted); padding:6px 0;">Tidak ada pemasukan</div>`;
+        cfTotalInEl.textContent = formatRp(totalInc);
+    }
+
+    if(expenseRowsEl) {
+        const sortedExp = Object.keys(expCat).sort((a,b) => expCat[b] - expCat[a]);
+        expenseRowsEl.innerHTML = sortedExp.length > 0 ? sortedExp.map(cat => {
+            const pct = totalExp > 0 ? ((expCat[cat]/totalExp)*100).toFixed(0) : 0;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--bg);">
+                <div style="flex:1;">
+                    <span style="font-size:13px; color:var(--text-main); font-weight:500;">${cat}</span>
+                    <div style="height:4px; background:var(--bg); border-radius:2px; margin-top:4px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:var(--danger); border-radius:2px;"></div>
+                    </div>
+                </div>
+                <div style="text-align:right; margin-left:12px; min-width:90px;">
+                    <span style="font-size:13px; font-weight:700; color:var(--danger);">${formatRp(expCat[cat])}</span>
+                    <div style="font-size:10px; color:var(--text-muted);">${pct}%</div>
+                </div>
+            </div>`;
+        }).join('') : `<div style="font-size:12px; color:var(--text-muted); padding:6px 0;">Tidak ada pengeluaran</div>`;
+        cfTotalOutEl.textContent = formatRp(totalExp);
+    }
+
+    if(cashflowNetEl) {
+        cashflowNetEl.textContent = (netCash >= 0 ? '+' : '-') + 'Rp ' + Math.abs(parseInt(netCash)).toLocaleString('id-ID');
+        cashflowNetEl.style.color = netCash >= 0 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    // Bar rasio pengeluaran vs pemasukan
+    const barFill = document.getElementById('cashflow-bar-fill');
+    const ratioLabel = document.getElementById('cashflow-ratio-label');
+    if(barFill && totalInc > 0) {
+        const usedPct = Math.min((totalExp / totalInc) * 100, 100);
+        barFill.style.width = usedPct + '%';
+        barFill.style.background = usedPct > 90 ? 'var(--danger)' : usedPct > 70 ? 'var(--warning)' : 'var(--success)';
+        if(ratioLabel) ratioLabel.textContent = usedPct.toFixed(0) + '% digunakan';
+    } else if(barFill) {
+        barFill.style.width = totalInc === 0 && totalExp > 0 ? '100%' : '0%';
+        barFill.style.background = 'var(--danger)';
+    }
+
+    // === RENDER CHECKBOXES KATEGORI ===
+    const container = document.getElementById('analytics-cat-checkboxes');
+    const existingCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    
+    container.innerHTML = data.categories.expense.map(cat => {
+        const isChecked = existingCheckboxes.length === 0 ? 'checked' : (existingCheckboxes.includes(cat) ? 'checked' : '');
+        return `<label class="cat-checkbox-wrapper">
+            <input type="checkbox" value="${cat}" ${isChecked} onchange="calculateCategoryAvg()" style="margin:0; width:auto;"> ${cat}
+        </label>`;
+    }).join('');
+    
+    calculateCategoryAvg();
+
+    // === RENDER CHART PARETO ===
     const sortedCats = Object.keys(expCat).sort((a,b) => expCat[b] - expCat[a]);
     const paretoLabels = [];
     const paretoData = [];
@@ -1454,18 +1692,7 @@ function renderCharts() {
         }
     });
 
-    const container = document.getElementById('analytics-cat-checkboxes');
-    const existingCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-    
-    container.innerHTML = data.categories.expense.map(cat => {
-        const isChecked = existingCheckboxes.includes(cat) ? 'checked' : '';
-        return `<label class="cat-checkbox-wrapper">
-            <input type="checkbox" value="${cat}" ${isChecked} onchange="calculateCategoryAvg()" style="margin:0; width:auto;"> ${cat}
-        </label>`;
-    }).join('');
-    
-    calculateCategoryAvg();
-
+    // === RENDER TREND CHART ===
     const trendLabels = [];
     const incData = [];
     const expData = [];
