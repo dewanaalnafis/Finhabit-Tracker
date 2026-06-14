@@ -436,6 +436,34 @@
         </div>
     </div>
 
+    <!-- MODAL: EDIT KATEGORI -->
+    <div id="modal-edit-category" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:flex-end;">
+        <div style="width:100%; background:white; border-radius:24px 24px 0 0; padding:20px; max-height:80vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2 style="font-size:18px; font-weight:700;">Edit Kategori</h2>
+                <button onclick="closeEditCategoryModal()" style="background:none; border:none; font-size:24px; cursor:pointer;">✕</button>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Nama Kategori</label>
+                <input type="text" id="edit-cat-name" class="form-control" placeholder="Nama kategori">
+            </div>
+
+            <div class="form-group">
+                <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Warna Kategori</label>
+                <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-bottom:12px;">
+                    <input type="color" id="edit-cat-color" class="form-control" style="height:50px; cursor:pointer;">
+                </div>
+                <div id="color-preset" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+            </div>
+
+            <div style="display:flex; gap:8px;">
+                <button onclick="saveCategoryEdit()" class="btn-primary" style="flex:1; padding:12px;">💾 Simpan</button>
+                <button onclick="closeEditCategoryModal()" style="flex:1; padding:12px; background:var(--border); color:var(--text-main); border:none; border-radius:10px; font-weight:600; cursor:pointer;">Batal</button>
+            </div>
+        </div>
+    </div>
+
     <!-- SECTION: HABIT -->
     <div id="view-habit" class="main-view" style="display:none;">
         <div class="pill-nav">
@@ -581,7 +609,22 @@
 
 <script>
 // ================= STATE & DATA =================
-let data = { wallets: [], categories: { income: [], expense: [] }, transactions: [], transfers: [], debts: [], habitQuestions: [], habitRecords: [] };
+let data = { 
+    wallets: [], 
+    categories: { income: [], expense: [] }, 
+    categoryColors: {}, // {categoryName: '#hexcolor'}
+    transactions: [], 
+    transfers: [], 
+    debts: [], 
+    habitQuestions: [], 
+    habitRecords: [] 
+};
+
+// Default category colors
+const DEFAULT_COLORS = [
+    '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', 
+    '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
+];
 let isHidden = true; // Default tertutup
 let charts = { expense: null, trend: null };
 
@@ -1146,15 +1189,119 @@ function addCategory(type) {
     if(!name) return;
     if(!data.categories[type].includes(name)) {
         data.categories[type].push(name);
-        saveData(); document.getElementById('cat-name-new').value = '';
+        // Assign random color if not set
+        if(!data.categoryColors[name]) {
+            const colorIndex = (Object.keys(data.categoryColors).length) % DEFAULT_COLORS.length;
+            data.categoryColors[name] = DEFAULT_COLORS[colorIndex];
+        }
+        saveData(); 
+        document.getElementById('cat-name-new').value = '';
         alert('Kategori ditambahkan!');
         updateAllUI(); 
     }
 }
 
+// Category editing state
+let editCategoryState = {
+    type: null,
+    oldName: null,
+    index: null
+};
+
+function openEditCategoryModal(type, categoryName) {
+    editCategoryState.type = type;
+    editCategoryState.oldName = categoryName;
+    editCategoryState.index = data.categories[type].indexOf(categoryName);
+    
+    const modal = document.getElementById('modal-edit-category');
+    document.getElementById('edit-cat-name').value = categoryName;
+    document.getElementById('edit-cat-color').value = data.categoryColors[categoryName] || '#10b981';
+    
+    // Render color presets
+    const colorPreset = document.getElementById('color-preset');
+    colorPreset.innerHTML = DEFAULT_COLORS.map(color => `
+        <button style="width:40px; height:40px; background:${color}; border:2px solid ${data.categoryColors[categoryName] === color ? '#000' : 'transparent'}; border-radius:8px; cursor:pointer;" onclick="document.getElementById('edit-cat-color').value='${color}'; renderColorPresets()"></button>
+    `).join('');
+    
+    modal.style.display = 'flex';
+}
+
+function renderColorPresets() {
+    const colorPreset = document.getElementById('color-preset');
+    const selectedColor = document.getElementById('edit-cat-color').value;
+    colorPreset.innerHTML = DEFAULT_COLORS.map(color => `
+        <button style="width:40px; height:40px; background:${color}; border:2px solid ${selectedColor === color ? '#000' : 'transparent'}; border-radius:8px; cursor:pointer;" onclick="document.getElementById('edit-cat-color').value='${color}'; renderColorPresets()"></button>
+    `).join('');
+}
+
+function saveCategoryEdit() {
+    const newName = document.getElementById('edit-cat-name').value.trim();
+    const newColor = document.getElementById('edit-cat-color').value;
+    const { type, oldName, index } = editCategoryState;
+    
+    if(!newName) {
+        alert('Nama kategori tidak boleh kosong!');
+        return;
+    }
+    
+    if(newName !== oldName && data.categories[type].includes(newName)) {
+        alert('Kategori dengan nama ini sudah ada!');
+        return;
+    }
+    
+    // Update name in array
+    if(newName !== oldName) {
+        data.categories[type][index] = newName;
+        // Update transactions that use old name
+        data.transactions.forEach(t => {
+            if(t.category === oldName && t.type === type) {
+                t.category = newName;
+            }
+        });
+        // Update color mapping
+        if(data.categoryColors[oldName]) {
+            delete data.categoryColors[oldName];
+        }
+    }
+    
+    // Update color
+    data.categoryColors[newName] = newColor;
+    
+    saveData();
+    closeEditCategoryModal();
+    updateAllUI();
+    alert('Kategori berhasil diperbarui!');
+}
+
+function closeEditCategoryModal() {
+    document.getElementById('modal-edit-category').style.display = 'none';
+    editCategoryState = { type: null, oldName: null, index: null };
+}
+
+function moveCategory(type, index, direction) {
+    const categories = data.categories[type];
+    const newIndex = index + direction;
+    
+    if(newIndex < 0 || newIndex >= categories.length) return;
+    
+    // Swap
+    [categories[index], categories[newIndex]] = [categories[newIndex], categories[index]];
+    
+    saveData();
+    renderCategoryList();
+}
+
 function deleteCategory(type, index) {
-    if(!confirm('Hapus kategori ini? (Histori lama tidak terhapus)')) return;
+    const categoryName = data.categories[type][index];
+    if(!confirm(`Hapus kategori "${categoryName}"? (Histori transaksi tidak akan terhapus)`)) return;
+    
     data.categories[type].splice(index, 1);
+    
+    // Delete color mapping
+    if(data.categoryColors[categoryName]) {
+        delete data.categoryColors[categoryName];
+    }
+    
     saveData();
     updateAllUI();
 }
@@ -1221,11 +1368,17 @@ function getTransactionHTML(t) {
         const w = data.wallets.find(w => w.id === t.walletId);
         const walletName = w ? w.name : 'Dompet Dihapus';
         
+        // Get category color
+        const catColor = data.categoryColors[t.category] || '#e5e7eb';
+        
         return `
-        <div class="list-item">
+        <div class="list-item" style="border-left: 4px solid ${catColor};">
             <div class="item-icon ${isInc ? 'in' : 'out'}">${iconChar}</div>
             <div class="item-details">
-                <div class="item-title">${t.category}</div>
+                <div class="item-title" style="display: flex; align-items: center; gap: 6px;">
+                    <span style="width: 8px; height: 8px; background: ${catColor}; border-radius: 2px; display: inline-block;"></span>
+                    ${t.category}
+                </div>
                 <div class="item-subtitle">
                     ${t.date} • <b>${typeName}</b> (💼 ${walletName})
                     ${t.note ? `<br><span style="opacity:0.8; margin-top:4px; display:inline-block;">📝 ${t.note}</span>` : ''}
@@ -1397,19 +1550,31 @@ function renderCategoryList() {
     const expList = document.getElementById('ui-category-list-expense');
     if(!incList || !expList) return;
 
-    incList.innerHTML = data.categories.income.map((c, idx) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
-            <span style="font-size: 14px; color: var(--text-main); font-weight: 500;">${c}</span>
-            <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0; border-radius: 6px;" onclick="deleteCategory('income', ${idx})">🗑️</button>
+    const renderCategories = (type, categories) => {
+        if(categories.length === 0) {
+            return '<div style="padding:10px; text-align:center; color:var(--text-muted); font-size:12px;">Belum ada kategori</div>';
+        }
+        return categories.map((c, idx) => {
+            const color = data.categoryColors[c] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+            return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                <div style="width: 12px; height: 12px; background: ${color}; border-radius: 3px;"></div>
+                <span style="font-size: 14px; color: var(--text-main); font-weight: 500; flex:1;">${c}</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                ${idx > 0 ? `<button style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px 6px;" onclick="moveCategory('${type}', ${idx}, -1)" title="Naik">⬆️</button>` : ''}
+                ${idx < categories.length - 1 ? `<button style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px 6px;" onclick="moveCategory('${type}', ${idx}, 1)" title="Turun">⬇️</button>` : ''}
+                <button style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px 6px;" onclick="openEditCategoryModal('${type}', '${c}')">✎</button>
+                <button class="btn-danger" style="padding: 4px 8px; font-size: 12px; margin: 0; border-radius: 6px;" onclick="deleteCategory('${type}', ${idx})">🗑️</button>
+            </div>
         </div>
-    `).join('');
+        `;
+        }).join('');
+    };
 
-    expList.innerHTML = data.categories.expense.map((c, idx) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
-            <span style="font-size: 14px; color: var(--text-main); font-weight: 500;">${c}</span>
-            <button class="btn-danger" style="padding: 4px 12px; font-size: 14px; margin: 0; border-radius: 6px;" onclick="deleteCategory('expense', ${idx})">🗑️</button>
-        </div>
-    `).join('');
+    incList.innerHTML = renderCategories('income', data.categories.income);
+    expList.innerHTML = renderCategories('expense', data.categories.expense);
 }
 
 // ================= HISTORY FILTER =================
@@ -1432,16 +1597,20 @@ function buildHistoryFilterCheckboxes() {
     const allInc = data.categories.income;
     const allExp = data.categories.expense;
 
-    incContainer.innerHTML = allInc.map(cat => {
+    incContainer.innerHTML = allInc.map((cat, idx) => {
         const isChecked = existingInc.length === 0 ? 'checked' : (existingInc.includes(cat) ? 'checked' : '');
-        return `<label class="cat-checkbox-wrapper" style="border-color: var(--success);">
+        const color = data.categoryColors[cat] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+        return `<label class="cat-checkbox-wrapper" style="border-color: ${color}; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 12px; height: 12px; background: ${color}; border-radius: 3px;"></div>
             <input type="checkbox" value="${cat}" ${isChecked} onchange="renderHistoryTab()" style="margin:0; width:auto;"> ${cat}
         </label>`;
     }).join('');
 
-    expContainer.innerHTML = allExp.map(cat => {
+    expContainer.innerHTML = allExp.map((cat, idx) => {
         const isChecked = existingExp.length === 0 ? 'checked' : (existingExp.includes(cat) ? 'checked' : '');
-        return `<label class="cat-checkbox-wrapper">
+        const color = data.categoryColors[cat] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length];
+        return `<label class="cat-checkbox-wrapper" style="border-color: ${color}; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 12px; height: 12px; background: ${color}; border-radius: 3px;"></div>
             <input type="checkbox" value="${cat}" ${isChecked} onchange="renderHistoryTab()" style="margin:0; width:auto;"> ${cat}
         </label>`;
     }).join('');
@@ -1467,9 +1636,18 @@ function renderHistoryTab() {
 
     const filteredTrans = data.transactions.filter(t => {
         if (t.date < start || t.date > end) return false;
-        if (t.type === 'income') return selectedInc.length === 0 || selectedInc.includes(t.category);
-        if (t.type === 'expense') return selectedExp.length === 0 || selectedExp.includes(t.category);
-        return true; // debt_in, debt_out tetap tampil
+        
+        // STRICT FILTER: hanya show kategori yang dipilih
+        if (selectedInc.length > 0 || selectedExp.length > 0) {
+            // Jika ada kategori yang dipilih
+            if (t.type === 'income') return selectedInc.includes(t.category);
+            if (t.type === 'expense') return selectedExp.includes(t.category);
+            // Jangan tampilkan transaksi tanpa kategori (debt_in, debt_out, dll)
+            return false;
+        }
+        
+        // Jika tidak ada yang dipilih, tampilkan semua transaksi
+        return true;
     });
     const filteredTfs = data.transfers.filter(t => t.date >= start && t.date <= end);
     
